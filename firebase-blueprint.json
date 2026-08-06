@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "cms_content": {
+      "title": "CMS Content",
+      "description": "Dynamic homepage content and hero settings",
+      "properties": {
+        "badgeText": { "type": "string" },
+        "mainTitle": { "type": "string" },
+        "highlightTitle": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "videoUrl": { "type": "string" },
+        "showroomNotice": { "type": "string" }
+      }
+    },
+    "banners": {
+      "title": "Homepage Banners & Slides",
+      "description": "Dynamic photo slides and campaign banners",
+      "properties": {
+        "title": { "type": "string" },
+        "subtitle": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "type": { "type": "string" },
+        "active": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Remix Premium Watch Store Nepal",
+  "description": "Luxury Online Watch Showroom \u0026 ERP with Automated Sales, Double-Entry Accounting, Inventory, and Digital Warranty Verification System",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
