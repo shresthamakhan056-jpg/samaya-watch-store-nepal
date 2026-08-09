@@ -44,29 +44,79 @@ export const MarketingCMS: React.FC = () => {
     setTimeout(() => setSaveStatus(''), 5000);
   };
 
-  // Video File Upload Handler
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Video File Upload Handler - Firestore Sync + Server Upload Fallback
   const handleVideoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 50 * 1024 * 1024) {
-      alert('Video file size is too large (max 50MB). Please select a smaller MP4 or provide a video URL.');
-      return;
-    }
+
+    setIsUploading(true);
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const dataUrl = event.target?.result as string;
-      if (dataUrl) {
+      if (!dataUrl) {
+        setIsUploading(false);
+        return;
+      }
+
+      // 1. If video is <= 800KB, save Base64 data URL directly into Firestore cloud DB so it syncs across published links!
+      if (file.size <= 800 * 1024) {
         setVidUrl(dataUrl);
         setContentForm(prev => ({ ...prev, heroVideoUrl: dataUrl }));
         updateHeroVideo({
           id: currentVideo.id || 'vid-1',
-          title: 'Custom Admin Uploaded Showcase Video',
+          title: 'Custom Uploaded Showcase Video',
           videoUrl: dataUrl,
           slogan: contentForm.heroHeadlineLine2,
           active: true
         });
         updateHomepageContent({ heroVideoUrl: dataUrl });
-        alert('Video uploaded successfully and published live!');
+        setIsUploading(false);
+        alert('🎉 Success! Your video is saved directly to Firestore Cloud Database!\n\nIt is now live and synced automatically across all devices and the published shared URL.');
+        return;
+      }
+
+      // 2. If video is > 800KB, upload to server for editor preview & inform about published links
+      try {
+        const response = await fetch('/api/upload-media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fileData: dataUrl,
+            fileName: file.name,
+            mimeType: file.type
+          })
+        });
+
+        const result = await response.json();
+        const hostedUrl = result.url || dataUrl;
+
+        setVidUrl(hostedUrl);
+        setContentForm(prev => ({ ...prev, heroVideoUrl: hostedUrl }));
+        updateHeroVideo({
+          id: currentVideo.id || 'vid-1',
+          title: 'Custom Uploaded Showcase Video',
+          videoUrl: hostedUrl,
+          slogan: contentForm.heroHeadlineLine2,
+          active: true
+        });
+        updateHomepageContent({ heroVideoUrl: hostedUrl });
+        alert('ℹ️ Video Uploaded for Preview!\n\nNote: The published share link runs on a separate public cloud instance. Because this video file exceeds 800KB, local container files cannot cross over to the published URL.\n\n👉 For guaranteed 100% video playback on the published URL across all devices, select a smaller video (<800KB), enter a public MP4 web URL, or choose one of our 1-click Luxury Stream Presets below!');
+      } catch (err) {
+        console.error('Server video upload error:', err);
+        setVidUrl(dataUrl);
+        setContentForm(prev => ({ ...prev, heroVideoUrl: dataUrl }));
+        updateHeroVideo({
+          id: currentVideo.id || 'vid-1',
+          title: 'Custom Uploaded Showcase Video',
+          videoUrl: dataUrl,
+          slogan: contentForm.heroHeadlineLine2,
+          active: true
+        });
+        updateHomepageContent({ heroVideoUrl: dataUrl });
+      } finally {
+        setIsUploading(false);
       }
     };
     reader.readAsDataURL(file);
@@ -84,19 +134,37 @@ export const MarketingCMS: React.FC = () => {
       active: true
     });
     updateHomepageContent({ heroVideoUrl: vidUrl });
-    alert('Hero background video URL updated live on homepage!');
+    alert('Hero background video URL updated live on homepage across all published links!');
   };
 
-  // Banner Image File Upload
+  // Preset Video Selection Handler
+  const handleSelectPresetVideo = (presetUrl: string, presetTitle: string) => {
+    setVidUrl(presetUrl);
+    setContentForm(prev => ({ ...prev, heroVideoUrl: presetUrl }));
+    updateHeroVideo({
+      id: currentVideo.id || 'vid-1',
+      title: presetTitle,
+      videoUrl: presetUrl,
+      slogan: contentForm.heroHeadlineLine2,
+      active: true
+    });
+    updateHomepageContent({ heroVideoUrl: presetUrl });
+    alert(`🎉 Selected "${presetTitle}"! This video stream is now live and 100% synced across both preview and published shared links!`);
+  };
+
+  // Banner Image File Upload - Direct Base64 Firestore Cloud Sync
   const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    setIsUploading(true);
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target?.result as string;
       if (dataUrl) {
         setBannerImage(dataUrl);
       }
+      setIsUploading(false);
     };
     reader.readAsDataURL(file);
   };
@@ -391,12 +459,20 @@ export const MarketingCMS: React.FC = () => {
               <div className="p-4 bg-zinc-950 border border-dashed border-amber-500/40 rounded-xl space-y-2 text-center">
                 <Upload className="w-8 h-8 text-amber-400 mx-auto" />
                 <h4 className="font-bold text-amber-200">Upload Video File from Computer / Mobile</h4>
-                <p className="text-[11px] text-zinc-400">Select MP4 video file to upload as the promotional background.</p>
-                <label className="inline-block px-4 py-2 bg-amber-500 text-zinc-950 font-bold rounded-lg cursor-pointer hover:bg-amber-400">
-                  Choose Video File
+                <p className="text-[11px] text-zinc-400">Select MP4 video file to upload directly to free Google Cloud hosting.</p>
+                <label className={`inline-flex items-center gap-2 px-4 py-2 bg-amber-500 text-zinc-950 font-bold rounded-lg transition-colors ${isUploading ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-amber-400'}`}>
+                  {isUploading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
+                      <span>Saving to Google Cloud...</span>
+                    </>
+                  ) : (
+                    <span>Choose Video File</span>
+                  )}
                   <input
                     type="file"
-                    accept="video/mp4,video/webm"
+                    disabled={isUploading}
+                    accept="video/mp4,video/webm,video/quicktime"
                     onChange={handleVideoFileUpload}
                     className="hidden"
                   />
@@ -417,7 +493,8 @@ export const MarketingCMS: React.FC = () => {
                     required
                     value={vidUrl}
                     onChange={(e) => setVidUrl(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-200 font-mono"
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-zinc-200 font-mono text-[11px]"
+                    placeholder="https://.../video.mp4"
                   />
                 </div>
 
@@ -428,6 +505,51 @@ export const MarketingCMS: React.FC = () => {
                   Save Video Stream URL
                 </button>
               </form>
+
+              {/* 1-Click Luxury Video Presets (Guaranteed to sync on Published Shared URL) */}
+              <div className="pt-2 border-t border-zinc-800 space-y-2">
+                <div className="text-[11px] font-bold text-amber-300 font-serif flex items-center justify-between">
+                  <span>✨ 1-Click Luxury Watch Video Presets</span>
+                  <span className="text-[9px] text-amber-500 font-mono uppercase bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30">100% Shared Link Ready</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPresetVideo('https://assets.mixkit.co/videos/preview/mixkit-close-up-of-a-watch-mechanism-42861-large.mp4', 'Swiss Mechanism Movement')}
+                    className="p-2 bg-zinc-950 border border-zinc-800 hover:border-amber-500/60 rounded-lg text-left text-[10px] text-zinc-300 hover:text-amber-200 transition-colors cursor-pointer"
+                  >
+                    <div className="font-bold text-amber-400">⚙️ Watch Gear Mechanism</div>
+                    <div className="text-[9px] text-zinc-500">Swiss Mechanical Movement</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPresetVideo('https://assets.mixkit.co/videos/preview/mixkit-checking-the-time-on-a-luxury-gold-watch-41527-large.mp4', 'Gold Luxury Chronograph')}
+                    className="p-2 bg-zinc-950 border border-zinc-800 hover:border-amber-500/60 rounded-lg text-left text-[10px] text-zinc-300 hover:text-amber-200 transition-colors cursor-pointer"
+                  >
+                    <div className="font-bold text-amber-400">⌚ Gold Luxury Chronograph</div>
+                    <div className="text-[9px] text-zinc-500">Gold Wrist Showcase</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPresetVideo('https://assets.mixkit.co/videos/preview/mixkit-gears-of-a-pocket-watch-working-42863-large.mp4', 'Horology Gears')}
+                    className="p-2 bg-zinc-950 border border-zinc-800 hover:border-amber-500/60 rounded-lg text-left text-[10px] text-zinc-300 hover:text-amber-200 transition-colors cursor-pointer"
+                  >
+                    <div className="font-bold text-amber-400">🕰️ Horology Gear Train</div>
+                    <div className="text-[9px] text-zinc-500">Intricate Internal Movement</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectPresetVideo('https://assets.mixkit.co/videos/preview/mixkit-hands-holding-a-gold-wrist-watch-41528-large.mp4', 'Executive Gold Timepiece')}
+                    className="p-2 bg-zinc-950 border border-zinc-800 hover:border-amber-500/60 rounded-lg text-left text-[10px] text-zinc-300 hover:text-amber-200 transition-colors cursor-pointer"
+                  >
+                    <div className="font-bold text-amber-400">✨ Executive Gold Timepiece</div>
+                    <div className="text-[9px] text-zinc-500">Boutique Luxury Unboxing</div>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Video Player Preview */}

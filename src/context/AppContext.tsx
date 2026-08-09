@@ -234,6 +234,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log('Firestore video listener notice:', err);
     });
 
+    // 2b. Banners listener
+    const bannersRef = doc(db, 'cms_content', 'banners');
+    const unsubBanners = onSnapshot(bannersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data && Array.isArray(data.banners) && data.banners.length > 0) {
+          setBanners(data.banners);
+        }
+      }
+    }, (err) => {
+      if (err?.code === 'resource-exhausted' || err?.message?.includes('quota')) {
+        isQuotaExceededRef.current = true;
+      }
+      console.log('Firestore banners listener notice:', err);
+    });
+
     // 3. Main ERP Store Data listener (sales, products, customers, warranties, purchases, accounts, journalEntries, suppliers, auditLogs)
     const erpRef = doc(db, 'erp_store', 'data');
     const unsubErp = onSnapshot(erpRef, (snapshot) => {
@@ -284,6 +300,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => {
       unsubContent();
       unsubVideo();
+      unsubBanners();
       unsubErp();
     };
   }, []);
@@ -515,22 +532,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...banner,
       id: `ban-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     };
-    setBanners(prev => [...prev, newBanner]);
+    setBanners(prev => {
+      const next = [...prev, newBanner];
+      setDoc(doc(db, 'cms_content', 'banners'), { banners: next }, { merge: true }).catch(err => {
+        console.error('Firestore add banner sync error:', err);
+      });
+      return next;
+    });
     logAction('Added Banner Slide', 'Marketing CMS', `Added slide photo banner "${banner.title}"`);
   };
 
   const toggleBannerActive = (id: string) => {
-    setBanners(prev => prev.map(b => b.id === id ? { ...b, active: !b.active } : b));
+    setBanners(prev => {
+      const next = prev.map(b => b.id === id ? { ...b, active: !b.active } : b);
+      setDoc(doc(db, 'cms_content', 'banners'), { banners: next }, { merge: true }).catch(console.error);
+      return next;
+    });
   };
 
   const deleteBanner = (id: string) => {
-    setBanners(prev => prev.filter(b => b.id !== id));
+    setBanners(prev => {
+      const next = prev.filter(b => b.id !== id);
+      setDoc(doc(db, 'cms_content', 'banners'), { banners: next }, { merge: true }).catch(console.error);
+      return next;
+    });
   };
 
   const updateHeroVideo = (video: CMSVideo) => {
     setVideos([video]);
     // Sync to Firestore
-    setDoc(doc(db, 'cms_content', 'hero_video'), video, { merge: true }).catch(console.error);
+    setDoc(doc(db, 'cms_content', 'hero_video'), video, { merge: true }).catch(err => {
+      console.error('Firestore hero video sync error:', err);
+      if (err?.message?.includes('exceeds') || err?.message?.includes('bytes') || err?.code === 'invalid-argument') {
+        alert('⚠️ Note: Uploaded video file exceeds Firestore single-document limit (1MB max).\n\nWhile it displays in your current browser tab, it cannot be synced across devices or to the published shared URL.\n\n👉 Please enter a public video URL link (e.g. MP4 hosted on Mixkit, Pexels, Cloudinary, AWS S3) in the video settings.');
+      }
+    });
     logAction('Updated Hero Video', 'Marketing CMS', `Updated promotional background video stream`);
   };
 
