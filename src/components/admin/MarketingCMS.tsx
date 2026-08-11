@@ -3,6 +3,7 @@ import { Video, Image as ImageIcon, Plus, Trash2, ToggleLeft, ToggleRight, Spark
 import { useApp } from '../../context/AppContext';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { CMSVideo } from '../../types';
+import { compressImageFile } from '../../utils/imageCompressor';
 
 export const MarketingCMS: React.FC = () => {
   const { videos, updateHeroVideo, banners, addBanner, toggleBannerActive, deleteBanner, homepageContent, updateHomepageContent, currentUser } = useApp();
@@ -153,20 +154,21 @@ export const MarketingCMS: React.FC = () => {
   };
 
   // Banner Image File Upload - Direct Base64 Firestore Cloud Sync
-  const handleBannerFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBannerFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      if (dataUrl) {
-        setBannerImage(dataUrl);
+    try {
+      const compressedDataUrl = await compressImageFile(file, 1200, 1200, 0.72);
+      if (compressedDataUrl) {
+        setBannerImage(compressedDataUrl);
       }
+    } catch (err) {
+      console.error('Failed to compress banner image:', err);
+    } finally {
       setIsUploading(false);
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
   const handleAddBanner = (e: React.FormEvent) => {

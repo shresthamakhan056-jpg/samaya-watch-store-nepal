@@ -26,6 +26,7 @@ import {
   PaymentMethod,
   DeliveryStatus
 } from '../types';
+import { compressImageDataUrl } from '../utils/imageCompressor';
 import {
   INITIAL_USERS,
   INITIAL_PRODUCTS,
@@ -714,16 +715,56 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Updated Homepage CMS', 'Marketing CMS', 'Updated homepage hero, text, buttons and social links.');
   };
 
-  const addBanner = (banner: Omit<CMSBanner, 'id'>) => {
+  const syncBannersToFirestore = async (bannersList: CMSBanner[]) => {
+    try {
+      const compressedBanners = await Promise.all(
+        bannersList.map(async (b) => {
+          if (b.imageUrl && b.imageUrl.startsWith('data:image/')) {
+            const compressed = await compressImageDataUrl(b.imageUrl, 1000, 1000, 0.70);
+            return { ...b, imageUrl: compressed };
+          }
+          return b;
+        })
+      );
+
+      await setDoc(doc(db, 'cms_content', 'banners'), { banners: compressedBanners }, { merge: true });
+    } catch (err: any) {
+      console.error('Firestore banners sync error:', err);
+      if (err?.message?.includes('exceeds') || err?.message?.includes('bytes') || err?.code === 'invalid-argument') {
+        console.warn('Banner document size exceeded 1MB. Retrying with aggressive compression...');
+        try {
+          const tightlyCompressed = await Promise.all(
+            bannersList.map(async (b) => {
+              if (b.imageUrl && b.imageUrl.startsWith('data:image/')) {
+                const compressed = await compressImageDataUrl(b.imageUrl, 750, 750, 0.50);
+                return { ...b, imageUrl: compressed };
+              }
+              return b;
+            })
+          );
+          await setDoc(doc(db, 'cms_content', 'banners'), { banners: tightlyCompressed }, { merge: true });
+        } catch (retryErr) {
+          console.error('Firestore banners retry failed:', retryErr);
+        }
+      }
+    }
+  };
+
+  const addBanner = async (banner: Omit<CMSBanner, 'id'>) => {
+    let compressedUrl = banner.imageUrl;
+    if (banner.imageUrl?.startsWith('data:image/')) {
+      compressedUrl = await compressImageDataUrl(banner.imageUrl, 1200, 1200, 0.72);
+    }
+
     const newBanner: CMSBanner = {
       ...banner,
+      imageUrl: compressedUrl,
       id: `ban-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     };
+
     setBanners(prev => {
       const next = [...prev, newBanner];
-      setDoc(doc(db, 'cms_content', 'banners'), { banners: next }, { merge: true }).catch(err => {
-        console.error('Firestore add banner sync error:', err);
-      });
+      syncBannersToFirestore(next);
       return next;
     });
     logAction('Added Banner Slide', 'Marketing CMS', `Added slide photo banner "${banner.title}"`);
@@ -732,7 +773,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const toggleBannerActive = (id: string) => {
     setBanners(prev => {
       const next = prev.map(b => b.id === id ? { ...b, active: !b.active } : b);
-      setDoc(doc(db, 'cms_content', 'banners'), { banners: next }, { merge: true }).catch(console.error);
+      syncBannersToFirestore(next);
       return next;
     });
   };
@@ -740,7 +781,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const deleteBanner = (id: string) => {
     setBanners(prev => {
       const next = prev.filter(b => b.id !== id);
-      setDoc(doc(db, 'cms_content', 'banners'), { banners: next }, { merge: true }).catch(console.error);
+      syncBannersToFirestore(next);
       return next;
     });
   };
