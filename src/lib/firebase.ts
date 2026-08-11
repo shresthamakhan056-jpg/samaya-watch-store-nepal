@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, deleteDoc, getDocs } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 let app;
@@ -47,5 +47,5 @@ export const logoutFirebase = async () => {
   }
 };
 
-export { onAuthStateChanged, doc, getDoc, setDoc, onSnapshot };
+export { onAuthStateChanged, doc, getDoc, setDoc, onSnapshot, collection, deleteDoc, getDocs };
 export type { FirebaseUser };

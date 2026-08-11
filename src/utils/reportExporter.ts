@@ -6,6 +6,8 @@
 import { Sale, Product, JournalEntry, Warranty, Purchase, AuditLog, Account } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import QRCode from 'qrcode';
+import kalpaLogo from '../assets/kalpa_logo.jpg';
 
 // Generic CSV Exporter
 export const exportToCSV = (filename: string, headers: string[], rows: (string | number)[][]) => {
@@ -972,5 +974,194 @@ export const exportStaffSalesReportPDF = (staffData: { staff: string; count: num
     ],
     'portrait'
   );
+};
+
+// 16. Single Sales Estimate Bill PDF (A4 Format)
+export const exportSingleEstimateBillPDF = async (sale: Sale) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+
+  // Draw Background Logo Watermark
+  try {
+    const img = new Image();
+    img.src = kalpaLogo;
+    await new Promise((resolve) => {
+      img.onload = resolve;
+      img.onerror = resolve;
+    });
+    if (img.complete && img.naturalWidth > 0) {
+      const watermarkSize = 110; // mm
+      const wmX = (pageWidth - watermarkSize) / 2;
+      const wmY = (pageHeight - watermarkSize) / 2;
+      doc.saveGraphicsState();
+      if ((doc as any).GState) {
+        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
+      }
+      doc.addImage(img, 'JPEG', wmX, wmY, watermarkSize, watermarkSize);
+      doc.restoreGraphicsState();
+    }
+  } catch (err) {
+    console.error('PDF watermark error:', err);
+  }
+
+  // Top Dark Header Bar
+  doc.setFillColor(24, 24, 27); // Zinc 900
+  doc.rect(0, 0, pageWidth, 32, 'F');
+
+  // Gold accent rule
+  doc.setFillColor(217, 119, 6); // Amber 600
+  doc.rect(0, 32, pageWidth, 2, 'F');
+
+  // Title Text
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(18);
+  doc.text('KALPA LUXURY TIMEPIECES', 15, 17);
+
+  // Sales Estimate Badge
+  doc.setFillColor(254, 243, 199); // Amber 100
+  doc.setDrawColor(245, 158, 11); // Amber 500
+  doc.roundedRect(pageWidth - 68, 7, 53, 18, 2, 2, 'FD');
+
+  doc.setTextColor(146, 64, 14); // Amber 900
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('SALES ESTIMATE BILL', pageWidth - 41.5, 15, { align: 'center' });
+  doc.setFontSize(7.5);
+  doc.text('OFFICIAL ERP RECEIPT', pageWidth - 41.5, 21, { align: 'center' });
+
+  // Bill Metadata Section
+  doc.setFillColor(250, 250, 250);
+  doc.setDrawColor(228, 228, 231);
+  doc.roundedRect(15, 40, 180, 28, 2, 2, 'FD');
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(39, 39, 42);
+  doc.text('BILL DETAILS:', 20, 47);
+  doc.text('CUSTOMER INFORMATION:', 105, 47);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(71, 85, 105);
+
+  doc.text(`Bill / Invoice #: ${sale.invoiceNumber}`, 20, 54);
+  doc.text(`Sales Date: ${sale.orderDate}`, 20, 60);
+  doc.text(`Payment Method: ${sale.paymentMethod}`, 20, 65);
+
+  doc.text(`Name: ${sale.customerName}`, 105, 54);
+  doc.text(`Mobile: ${sale.customerMobile}`, 105, 60);
+  doc.text(`Address / Source: ${sale.orderSource}`, 105, 65);
+
+  // Items Table
+  autoTable(doc, {
+    startY: 74,
+    head: [['#', 'Item Description', 'Serial / Warranty No', 'Order Source', 'Price (NPR)']],
+    body: [
+      [
+        '1',
+        sale.watchModel || `${sale.productBrand} ${sale.productModel}`,
+        `${sale.serialNumber || 'N/A'} (${sale.warrantyId})`,
+        sale.orderSource || 'Direct Store',
+        sale.sellingPrice.toLocaleString()
+      ]
+    ],
+    theme: 'grid',
+    headStyles: {
+      fillColor: [24, 24, 27],
+      textColor: [245, 158, 11],
+      fontStyle: 'bold',
+      fontSize: 9,
+      halign: 'left'
+    },
+    bodyStyles: {
+      fontSize: 8.5,
+      textColor: [39, 39, 42],
+      cellPadding: 4
+    },
+    margin: { left: 15, right: 15 }
+  });
+
+  let finalY = (doc as any).lastAutoTable.finalY + 8;
+
+  // Calculation Summary Box
+  const summaryX = 115;
+  const summaryWidth = 80;
+
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(226, 232, 240);
+  doc.roundedRect(summaryX, finalY, summaryWidth, 32, 2, 2, 'FD');
+
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(71, 85, 105);
+
+  doc.text('Subtotal Price:', summaryX + 5, finalY + 8);
+  doc.text(`NPR ${sale.sellingPrice.toLocaleString()}`, summaryX + summaryWidth - 5, finalY + 8, { align: 'right' });
+
+  doc.text('Discount Applied:', summaryX + 5, finalY + 15);
+  doc.text(`- NPR ${sale.discount.toLocaleString()}`, summaryX + summaryWidth - 5, finalY + 15, { align: 'right' });
+
+  doc.setDrawColor(203, 213, 225);
+  doc.line(summaryX + 5, finalY + 19, summaryX + summaryWidth - 5, finalY + 19);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(15, 23, 42);
+  doc.text('Net Total Billable:', summaryX + 5, finalY + 26);
+  doc.text(`NPR ${sale.finalTotal.toLocaleString()}`, summaryX + summaryWidth - 5, finalY + 26, { align: 'right' });
+
+  finalY += 40;
+
+  // Warranty Box
+  doc.setFillColor(254, 252, 232);
+  doc.setDrawColor(250, 204, 21);
+  doc.roundedRect(15, finalY, 180, 22, 2, 2, 'FD');
+
+  doc.setFontSize(8.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(133, 77, 14);
+  doc.text('DIGITAL WARRANTY CERTIFICATE ATTACHED', 20, finalY + 7);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(113, 63, 18);
+  doc.text(`Warranty ID: ${sale.warrantyId}  |  Serial No: ${sale.serialNumber}  |  Duration: 12 Months Official Warranty`, 20, finalY + 14);
+
+  finalY += 30;
+
+  // QR Verification Code (QR ONLY)
+  const targetUrl = 'https://ais-pre-elkztr5oggtrem57ql7bfr-12678260771.asia-east1.run.app/';
+  try {
+    const qrDataUrl = await QRCode.toDataURL(targetUrl, { margin: 1, width: 200 });
+    const qrSize = 34;
+    const qrX = 15;
+    const qrY = finalY;
+
+    // Draw QR image
+    doc.addImage(qrDataUrl, 'PNG', qrX, qrY, qrSize, qrSize);
+    doc.link(qrX, qrY, qrSize, qrSize, { url: targetUrl });
+
+    // Link Title Text
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(180, 83, 9); // Amber 700
+    doc.text('SCAN OR CLICK QR CODE TO VERIFY OFFICIAL WARRANTY', qrX + qrSize + 8, qrY + 14);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100, 116, 139);
+    doc.text('Verified Kalpa ERP digital authenticity record.', qrX + qrSize + 8, qrY + 20);
+  } catch (err) {
+    console.error('Failed to generate PDF QR Code:', err);
+  }
+
+  // Footer terms
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'italic');
+  doc.setTextColor(148, 163, 184);
+  doc.text('Thank you for choosing Kalpa. This estimate bill serves as proof of purchase and warranty certificate.', pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+  doc.save(`Sales_Estimate_Bill_${sale.invoiceNumber}.pdf`);
 };
 

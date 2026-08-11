@@ -17,7 +17,7 @@ export const Footer: React.FC<FooterProps> = ({ setIsAdminOpen }) => {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-amber-800 p-0.5 flex items-center justify-center overflow-hidden shrink-0">
-                <img src={kalpaLogo} alt="कल्प Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
+                <img src={kalpaLogo} alt="कल्प Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }} />
               </div>
               <span className="font-serif text-xl tracking-wider text-amber-100 font-bold uppercase">
                 कल्प <span className="text-amber-500">• LUXURY TIMEPIECES</span>

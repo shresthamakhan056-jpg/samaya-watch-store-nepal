@@ -48,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
                 alt="कल्प Official Logo" 
                 className="w-full h-full object-cover rounded-full"
                 referrerPolicy="no-referrer"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }}
               />
             </div>
             <div>

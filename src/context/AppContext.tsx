@@ -54,6 +54,9 @@ import {
   getDoc,
   setDoc,
   onSnapshot,
+  collection,
+  deleteDoc,
+  getDocs,
   FirebaseUser
 } from '../lib/firebase';
 
@@ -100,6 +103,7 @@ interface AppContextType {
     trackingNumber?: string;
     orderSource: OrderSource;
   }) => { sale: Sale; warranty: Warranty } | { error: string };
+  updateSale: (saleId: string, updatedFields: Partial<Sale>) => void;
 
   // Warranties & Automated Lifecycle
   warranties: Warranty[];
@@ -349,13 +353,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log('Firestore video listener notice:', err);
     });
 
-    // 2b. Banners listener
+    // 2b. Banners Collection Listener (individual docs per banner)
+    const unsubBannersCollection = onSnapshot(collection(db, 'cms_banners'), (colSnapshot) => {
+      if (!colSnapshot.empty) {
+        const remoteBanners = colSnapshot.docs.map(d => d.data() as CMSBanner);
+        if (remoteBanners.length > 0) {
+          setBanners(remoteBanners);
+        }
+      }
+    }, (err) => {
+      console.log('Firestore cms_banners collection notice:', err);
+    });
+
+    // Fallback single-doc banners listener
     const bannersRef = doc(db, 'cms_content', 'banners');
-    const unsubBanners = onSnapshot(bannersRef, (snapshot) => {
+    const unsubBannersDoc = onSnapshot(bannersRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && Array.isArray(data.banners) && data.banners.length > 0) {
-          setBanners(data.banners);
+          setBanners(prev => prev.length === 0 ? data.banners : prev);
         }
       }
     }, (err) => {
@@ -364,6 +380,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       console.log('Firestore banners listener notice:', err);
     });
+
+    const unsubBanners = () => {
+      unsubBannersCollection();
+      unsubBannersDoc();
+    };
 
     // Modular Products Listener
     const unsubProductsDoc = onSnapshot(doc(db, 'erp_store', 'products'), (snapshot) => {
@@ -717,36 +738,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const syncBannersToFirestore = async (bannersList: CMSBanner[]) => {
     try {
-      const compressedBanners = await Promise.all(
+      // Sync each banner as an individual document in cms_banners collection
+      await Promise.all(
+        bannersList.map(async (b) => {
+          let imageUrl = b.imageUrl;
+          if (imageUrl && imageUrl.startsWith('data:image/')) {
+            imageUrl = await compressImageDataUrl(imageUrl, 1000, 1000, 0.70);
+          }
+          const compressedBanner = { ...b, imageUrl };
+          await setDoc(doc(db, 'cms_banners', b.id), compressedBanner, { merge: true });
+        })
+      );
+
+      // Also attempt to sync summary list to cms_content/banners as fallback
+      const summaryBanners = await Promise.all(
         bannersList.map(async (b) => {
           if (b.imageUrl && b.imageUrl.startsWith('data:image/')) {
-            const compressed = await compressImageDataUrl(b.imageUrl, 1000, 1000, 0.70);
+            const compressed = await compressImageDataUrl(b.imageUrl, 700, 700, 0.50);
             return { ...b, imageUrl: compressed };
           }
           return b;
         })
       );
-
-      await setDoc(doc(db, 'cms_content', 'banners'), { banners: compressedBanners }, { merge: true });
+      await setDoc(doc(db, 'cms_content', 'banners'), { banners: summaryBanners }, { merge: true }).catch(() => {});
     } catch (err: any) {
-      console.error('Firestore banners sync error:', err);
-      if (err?.message?.includes('exceeds') || err?.message?.includes('bytes') || err?.code === 'invalid-argument') {
-        console.warn('Banner document size exceeded 1MB. Retrying with aggressive compression...');
-        try {
-          const tightlyCompressed = await Promise.all(
-            bannersList.map(async (b) => {
-              if (b.imageUrl && b.imageUrl.startsWith('data:image/')) {
-                const compressed = await compressImageDataUrl(b.imageUrl, 750, 750, 0.50);
-                return { ...b, imageUrl: compressed };
-              }
-              return b;
-            })
-          );
-          await setDoc(doc(db, 'cms_content', 'banners'), { banners: tightlyCompressed }, { merge: true });
-        } catch (retryErr) {
-          console.error('Firestore banners retry failed:', retryErr);
-        }
-      }
+      console.error('Firestore banners sync notice:', err);
     }
   };
 
@@ -756,11 +772,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       compressedUrl = await compressImageDataUrl(banner.imageUrl, 1200, 1200, 0.72);
     }
 
+    const bannerId = `ban-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const newBanner: CMSBanner = {
       ...banner,
       imageUrl: compressedUrl,
-      id: `ban-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
+      id: bannerId
     };
+
+    // Save directly to individual Firestore doc in cms_banners collection
+    setDoc(doc(db, 'cms_banners', bannerId), newBanner, { merge: true }).catch(err => {
+      console.error('Failed to write new banner to cms_banners collection:', err);
+    });
 
     setBanners(prev => {
       const next = [...prev, newBanner];
@@ -772,13 +794,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const toggleBannerActive = (id: string) => {
     setBanners(prev => {
-      const next = prev.map(b => b.id === id ? { ...b, active: !b.active } : b);
+      const next = prev.map(b => {
+        if (b.id === id) {
+          const updated = { ...b, active: !b.active };
+          setDoc(doc(db, 'cms_banners', id), { active: updated.active }, { merge: true }).catch(console.error);
+          return updated;
+        }
+        return b;
+      });
       syncBannersToFirestore(next);
       return next;
     });
   };
 
   const deleteBanner = (id: string) => {
+    deleteDoc(doc(db, 'cms_banners', id)).catch(console.error);
     setBanners(prev => {
       const next = prev.filter(b => b.id !== id);
       syncBannersToFirestore(next);
@@ -1182,6 +1212,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Created Sale & Warranty', 'Sales & ERP', `Created Invoice #${invoiceNumber} for ${cust.name}. Generated Warranty ID #${warrantyId}. Stock decreased by 1.`);
 
     return { sale: newSale, warranty: newWarranty };
+  };
+
+  const updateSale = (saleId: string, updatedFields: Partial<Sale>) => {
+    setSales(prev => {
+      const next = prev.map(s => {
+        if (s.id === saleId) {
+          const sellingPrice = updatedFields.sellingPrice !== undefined ? updatedFields.sellingPrice : s.sellingPrice;
+          const discount = updatedFields.discount !== undefined ? updatedFields.discount : s.discount;
+          const netTotal = Math.max(0, sellingPrice - discount);
+
+          const updatedSale: Sale = {
+            ...s,
+            ...updatedFields,
+            sellingPrice,
+            discount,
+            netTotal,
+            vatAmount: 0,
+            finalTotal: netTotal
+          };
+
+          // Also update corresponding warranty if exists
+          if (s.warrantyId) {
+            setWarranties(wPrev => {
+              const wNext = wPrev.map(w => {
+                if (w.id === s.warrantyId || w.invoiceNumber === s.invoiceNumber) {
+                  return {
+                    ...w,
+                    customerName: updatedSale.customerName || w.customerName,
+                    customerMobile: updatedSale.customerMobile || w.customerMobile,
+                    serialNumber: updatedSale.serialNumber || w.serialNumber,
+                    purchaseDate: updatedSale.orderDate || w.purchaseDate,
+                    invoiceNumber: updatedSale.invoiceNumber || w.invoiceNumber
+                  };
+                }
+                return w;
+              });
+              saveWarrantiesCloud(wNext);
+              return wNext;
+            });
+          }
+
+          return updatedSale;
+        }
+        return s;
+      });
+      saveSalesCloud(next);
+      return next;
+    });
+    logAction('Updated Sale', 'Sales', `Updated sale order details for ${saleId}`);
   };
 
   // Warranty lookup
@@ -1838,6 +1917,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addSupplier,
         sales,
         createSale,
+        updateSale,
         warranties,
         getWarrantyByIdOrMobile,
         getWarrantiesByMobile,
