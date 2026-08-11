@@ -369,7 +369,7 @@ export const INITIAL_CMS_VIDEOS: CMSVideo[] = [
 
 export const INITIAL_HOMEPAGE_CONTENT = {
   showroomNotice: 'Official Notice: We do NOT sell directly on website. All orders are fulfilled via TikTok, Instagram & Facebook Messenger.',
-  brandTitle: 'समय-The Watch Store',
+  brandTitle: 'कल्प',
   brandSubtitle: '',
   locationSubtitle: 'EXCLUSIVELY SERVING NEPAL',
   certifiedImporterBadge: 'CERTIFIED IMPORTER IN NEPAL',
@@ -386,3 +386,59 @@ export const INITIAL_HOMEPAGE_CONTENT = {
 };
 
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
+
+export const INITIAL_NOTIFICATION_TEMPLATES = [
+  {
+    id: 'tmpl-1',
+    eventKey: 'SALE_WARRANTY_ISSUED',
+    title: 'Digital Warranty Created - कल्प',
+    body: 'Dear {{customerName}}, your purchase of {{watchModel}} comes with an official digital warranty {{warrantyId}}. Verify at: https://samaya-watch-store-nepal.ai.studio/warranty?code={{warrantyId}}',
+    channels: ['SMS', 'WhatsApp']
+  },
+  {
+    id: 'tmpl-2',
+    eventKey: 'CLAIM_SUBMITTED',
+    title: 'Warranty Claim Registered - कल्प',
+    body: 'Dear {{customerName}}, your warranty claim #{{claimId}} for {{watchModel}} has been submitted successfully. Track status on our website.',
+    channels: ['SMS', 'WhatsApp']
+  },
+  {
+    id: 'tmpl-3',
+    eventKey: 'CLAIM_APPROVED',
+    title: 'Warranty Claim Approved - कल्प',
+    body: 'Dear {{customerName}}, claim #{{claimId}} has been approved under warranty coverage and assigned for technical repair.',
+    channels: ['SMS', 'WhatsApp']
+  },
+  {
+    id: 'tmpl-4',
+    eventKey: 'CLAIM_READY_COLLECTION',
+    title: 'Watch Ready for Collection - कल्प',
+    body: 'Dear {{customerName}}, your watch (Claim #{{claimId}}) has passed quality checks and is ready for pickup at Durbar Marg Flagship Store. OTP for collection: {{otpCode}}',
+    channels: ['SMS', 'WhatsApp']
+  },
+  {
+    id: 'tmpl-5',
+    eventKey: 'WARRANTY_EXPIRING_SOON',
+    title: 'Warranty Expiry Reminder - कल्प',
+    body: 'Dear {{customerName}}, your warranty {{warrantyId}} for {{watchModel}} will expire in 30 days on {{expiryDate}}.',
+    channels: ['SMS']
+  }
+];
+
+export const INITIAL_WARRANTY_SETTINGS = {
+  defaultWarrantyMonths: 24,
+  expiryReminderDays: 30,
+  gracePeriodDays: 14,
+  warrantyPrefix: 'WRN-',
+  claimPrefix: 'WC-',
+  otpProtectionEnabled: true,
+  termsNepali: [
+    '१. यो डिजिटल वारेन्टी कार्ड कल्प (KALPA) बाट खरिद गरिएका आधिकारिक घडीहरूका लागि मात्र मान्य हुनेछ।',
+    '२. वारेन्टीले केवल मेकानिकल तथा मुभमेन्ट त्रुटिहरू (Mechanical & Movement Defects) लाई मात्र समेट्छ।',
+    '३. पानीको क्षति (Water damage) केवल आधिकारिक वाटर रेसिस्टेन्ट रेटिङभित्रको प्रयोगमा मात्र लागू हुनेछ।',
+    '४. बाहिरी सिसा, फित्ता (Strap), वा केसमा ग्राहकको लापरवाही वा दुर्घटनाबाट भएको क्षति वारेन्टीभित्र पर्दैन।',
+    '५. अनाधिकृत प्राविधिक वा पसलमा मर्मत गराइएमा वा छाप तोडिएमा वारेन्टी स्वतः रद्द (Void) हुनेछ।',
+    '६. घडी संकलन (Collection) गर्दा मोबाइलमा प्राप्त OTP वा आधिकारिक डिजिटल हस्ताक्षर प्रस्तुत गर्नुपर्नेछ।'
+  ]
+};
+

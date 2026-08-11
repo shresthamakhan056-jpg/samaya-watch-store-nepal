@@ -12,7 +12,7 @@ export const SocialOrderModal: React.FC<SocialOrderModalProps> = ({ product, onC
 
   if (!product) return null;
 
-  const orderMessage = `Namaste! I would like to inquire/order the following watch from Premium Watch Store Nepal:\n\nBrand: ${product.brand}\nModel: ${product.model}\nSKU: ${product.sku}\nDial/Case: ${product.dialColor} (${product.caseSize})\nWarranty: ${product.warrantyMonths} Months Digital QR Warranty\n\nPlease inform availability and delivery timeline. Thank you!`;
+  const orderMessage = `Namaste! I would like to inquire/order the following watch from कल्प (Kalpa Watch Store Nepal):\n\nBrand: ${product.brand}\nModel: ${product.model}\nSKU: ${product.sku}\nDial/Case: ${product.dialColor} (${product.caseSize})\nWarranty: ${product.warrantyMonths} Months Digital QR Warranty\n\nPlease inform availability and delivery timeline. Thank you!`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(orderMessage);

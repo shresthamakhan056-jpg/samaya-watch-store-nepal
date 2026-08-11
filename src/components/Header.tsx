@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Watch, ShoppingBag, Radio, Sparkles, UserCheck, Menu, X, Phone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import kalpaLogo from '../assets/kalpa_logo.jpg';
 
 interface HeaderProps {
   activeTab: string;
@@ -41,17 +42,20 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => { setActiveTab('home'); setIsAdminOpen(false); }}
             className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
           >
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-lg shadow-amber-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <div className="w-full h-full bg-[#0A0A0B] rounded-full flex items-center justify-center">
-                <Watch className="w-6 h-6 text-amber-400" />
-              </div>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-xl shadow-amber-900/40 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+              <img 
+                src={kalpaLogo} 
+                alt="कल्प Official Logo" 
+                className="w-full h-full object-cover rounded-full"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <div>
-              <div className="font-serif text-lg tracking-widest text-amber-100 uppercase font-bold flex items-center gap-2">
-                {homepageContent.brandTitle || 'समय-The Watch Store'} {homepageContent.brandSubtitle ? <span className="text-amber-500 text-xs px-1.5 py-0.5 border border-amber-500/40 rounded bg-amber-500/10">{homepageContent.brandSubtitle}</span> : null}
+              <div className="font-serif text-2xl tracking-wider text-amber-100 font-bold flex items-center gap-2">
+                {(!homepageContent.brandTitle || homepageContent.brandTitle.includes('समय') || homepageContent.brandTitle.includes('SAMAYA') || homepageContent.brandTitle.includes('PREMIUM')) ? 'कल्प' : homepageContent.brandTitle} {homepageContent.brandSubtitle ? <span className="text-amber-500 text-xs px-1.5 py-0.5 border border-amber-500/40 rounded bg-amber-500/10">{homepageContent.brandSubtitle}</span> : null}
               </div>
               <div className="text-[10px] tracking-widest text-amber-400/80 uppercase font-light">
-                {homepageContent.locationSubtitle || 'DURBAR MARG • JHAMSIKHEL'}
+                {homepageContent.locationSubtitle || 'EXCLUSIVELY SERVING NEPAL'}
               </div>
             </div>
           </button>

@@ -1,20 +1,10 @@
-import React, { useState } from 'react';
-import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText, Trash2 } from 'lucide-react';
+import React from 'react';
+import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useApp } from '../../context/AppContext';
-import { DeleteVerificationModal } from './DeleteVerificationModal';
 
 export const AdminDashboard: React.FC = () => {
-  const { sales, products, warranties, customers, auditLogs, resetToDefaultData, currentUser } = useApp();
-
-  const [purgeSuccessMsg, setPurgeSuccessMsg] = useState('');
-  const [showPurgeModal, setShowPurgeModal] = useState(false);
-
-  const handlePurgeDummyData = () => {
-    resetToDefaultData();
-    setPurgeSuccessMsg('System reset to clean default state.');
-    setTimeout(() => setPurgeSuccessMsg(''), 3000);
-  };
+  const { sales, products, warranties, customers, auditLogs, currentUser } = useApp();
 
   // Metrics calculations
   const totalRevenue = sales.reduce((sum, s) => sum + s.finalTotal, 0);
@@ -57,16 +47,6 @@ export const AdminDashboard: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {currentUser.role === 'Super Admin' && (
-            <button
-              onClick={() => setShowPurgeModal(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Purge all dummy sample data for clean live deployment (Super Admin Only)"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Purge Dummy Data</span>
-            </button>
-          )}
           <span className="text-xs text-zinc-400 font-mono hidden sm:inline">System Time:</span>
           <span className="text-xs font-mono font-bold text-amber-300 bg-black px-3 py-1.5 rounded-xl border border-amber-500/30">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
@@ -224,19 +204,6 @@ export const AdminDashboard: React.FC = () => {
           ))}
         </div>
       </div>
-
-      {/* 2-STEP DELETE VERIFICATION MODAL (SUPER ADMIN ONLY) */}
-      <DeleteVerificationModal
-        isOpen={showPurgeModal}
-        title="Purge System Sample Data"
-        itemName="All Dummy Sample Orders, Sales & Temporary Items"
-        detailsText="This operation will purge all temporary sample records and reset the database to a clean live state."
-        onClose={() => setShowPurgeModal(false)}
-        onConfirm={() => {
-          handlePurgeDummyData();
-          setShowPurgeModal(false);
-        }}
-      />
     </div>
   );
 };

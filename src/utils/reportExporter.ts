@@ -123,7 +123,7 @@ export const exportToPDF = (
       doc.setFontSize(7);
       doc.setTextColor(161, 161, 170);
       doc.text(
-        `Page ${data.pageNumber} of ${totalPages}  •  Samaya Premium Watch Store ERP  •  Confidential Financial Document`,
+        `Page ${data.pageNumber} of ${totalPages}  •  Kalpa Luxury Timepiece Boutique ERP  •  Confidential Financial Document`,
         pageWidth / 2,
         doc.internal.pageSize.getHeight() - 8,
         { align: 'center' }
@@ -170,7 +170,7 @@ export const exportSalesReport = (sales: Sale[]) => {
     s.warrantyId
   ]);
 
-  exportToCSV('Sales_Report_Samaya_Watch', headers, rows);
+  exportToCSV('Sales_Report_Kalpa_Watch', headers, rows);
 };
 
 export const exportSalesReportPDF = (sales: Sale[]) => {
@@ -209,7 +209,7 @@ export const exportSalesReportPDF = (sales: Sale[]) => {
   const avgOrder = totalInvoices > 0 ? totalRevenue / totalInvoices : 0;
 
   exportToPDF(
-    'Sales_Report_Samaya_Watch',
+    'Sales_Report_Kalpa_Watch',
     'Executive Sales Analytics & Invoice Ledger',
     `Total Transactions: ${totalInvoices} | Generated: ${new Date().toLocaleDateString()}`,
     headers,
@@ -257,7 +257,7 @@ export const exportInventoryReport = (products: Product[]) => {
     p.warrantyMonths
   ]);
 
-  exportToCSV('Inventory_Stock_Report_Samaya_Watch', headers, rows);
+  exportToCSV('Inventory_Stock_Report_Kalpa_Watch', headers, rows);
 };
 
 export const exportInventoryReportPDF = (products: Product[]) => {
@@ -291,7 +291,7 @@ export const exportInventoryReportPDF = (products: Product[]) => {
   const totalValuation = products.reduce((sum, p) => sum + (p.purchasePrice * p.stock), 0);
 
   exportToPDF(
-    'Inventory_Stock_Report_Samaya_Watch',
+    'Inventory_Stock_Report_Kalpa_Watch',
     'Watch Inventory Valuation & Stock Audit Report',
     `Total Watch SKUs: ${products.length} | Generated: ${new Date().toLocaleDateString()}`,
     headers,
@@ -336,7 +336,7 @@ export const exportJournalEntriesReport = (journalEntries: JournalEntry[]) => {
     });
   });
 
-  exportToCSV('Journal_Entries_Ledger_Samaya_Watch', headers, rows);
+  exportToCSV('Journal_Entries_Ledger_Kalpa_Watch', headers, rows);
 };
 
 export const exportJournalEntriesReportPDF = (journalEntries: JournalEntry[]) => {
@@ -375,7 +375,7 @@ export const exportJournalEntriesReportPDF = (journalEntries: JournalEntry[]) =>
   });
 
   exportToPDF(
-    'Journal_Entries_Ledger_Samaya_Watch',
+    'Journal_Entries_Ledger_Kalpa_Watch',
     'Double-Entry Accounting General Ledger Audit',
     `Total Journal Vouchers: ${journalEntries.length}`,
     headers,
@@ -887,7 +887,7 @@ export const exportChartOfAccountsPDF = (accounts: Account[]) => {
   ]);
 
   exportToPDF(
-    'Chart_Of_Accounts_Samaya',
+    'Chart_Of_Accounts_Kalpa',
     'Official Chart of Accounts Framework',
     `Total Accounts: ${accounts.length}`,
     headers,

@@ -3,6 +3,7 @@ import { Plus, Search, FileText, CheckCircle, ShieldCheck, Printer, ArrowRight, 
 import { useApp } from '../../context/AppContext';
 import { OrderSource, PaymentMethod, Sale } from '../../types';
 import { exportSalesReport, exportSalesReportPDF } from '../../utils/reportExporter';
+import kalpaLogo from '../../assets/kalpa_logo.jpg';
 
 export const SalesModule: React.FC = () => {
   const { products, customers, sales, createSale, currentUser } = useApp();
@@ -373,10 +374,13 @@ export const SalesModule: React.FC = () => {
 
             {/* Sales Estimate Bill Header */}
             <div className="border-b-2 border-amber-600 pb-4 flex justify-between items-start">
-              <div>
-                <h1 className="font-serif text-2xl font-bold uppercase tracking-widest text-zinc-900">
-                  समय- The Watch Store
-                </h1>
+              <div className="flex items-center gap-3">
+                <img src={kalpaLogo} alt="कल्प Logo" className="w-12 h-12 rounded-full border border-amber-600/40 object-cover" referrerPolicy="no-referrer" />
+                <div>
+                  <h1 className="font-serif text-2xl font-bold uppercase tracking-widest text-zinc-900">
+                    कल्प • Kalpa Luxury Timepieces
+                  </h1>
+                </div>
               </div>
               <div className="text-right">
                 <span className="text-xs font-bold uppercase px-3 py-1 bg-amber-100 text-amber-900 rounded border border-amber-300">
@@ -442,7 +446,7 @@ export const SalesModule: React.FC = () => {
             </div>
 
             <div className="text-[11px] text-zinc-500 pt-4 border-t border-zinc-200 text-center">
-              Thank you for choosing समय- The Watch Store. Your Digital QR Warranty is active and verified at <strong>https://samaya-watch-store-nepal.ai.studio/warranty?code={selectedSaleForInvoice.warrantyId}</strong>
+              Thank you for choosing कल्प. Your Digital QR Warranty is active and verified at <strong>https://kalpa-watch-store-nepal.ai.studio/warranty?code={selectedSaleForInvoice.warrantyId}</strong>
             </div>
 
             <div className="pt-2 flex justify-end gap-3 print:hidden">

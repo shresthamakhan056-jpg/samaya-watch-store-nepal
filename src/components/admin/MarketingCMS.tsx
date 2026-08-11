@@ -277,7 +277,7 @@ export const MarketingCMS: React.FC = () => {
                   <label className="text-zinc-400 block mb-1 font-mono">Brand Title Line 1:</label>
                   <input
                     type="text"
-                    value={contentForm.brandTitle || 'PREMIUM WATCH'}
+                    value={contentForm.brandTitle || 'कल्प'}
                     onChange={(e) => setContentForm({ ...contentForm, brandTitle: e.target.value })}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-amber-100 font-bold"
                   />
@@ -402,7 +402,7 @@ export const MarketingCMS: React.FC = () => {
               {/* Header Preview */}
               <div className="p-3 bg-zinc-950 border-b border-amber-500/20 flex flex-col items-center">
                 <div className="font-serif text-base tracking-widest text-amber-100 uppercase font-bold flex items-center gap-1.5">
-                  {contentForm.brandTitle || 'PREMIUM WATCH'} <span className="text-amber-500 text-[10px] px-1 py-0.5 border border-amber-500/40 rounded bg-amber-500/10">{contentForm.brandSubtitle || 'NEPAL'}</span>
+                  {contentForm.brandTitle || 'कल्प'} <span className="text-amber-500 text-[10px] px-1 py-0.5 border border-amber-500/40 rounded bg-amber-500/10">{contentForm.brandSubtitle || ''}</span>
                 </div>
                 <div className="text-[9px] tracking-widest text-amber-400/80 uppercase font-light mt-0.5">
                   {contentForm.locationSubtitle || 'DURBAR MARG • JHAMSIKHEL'}

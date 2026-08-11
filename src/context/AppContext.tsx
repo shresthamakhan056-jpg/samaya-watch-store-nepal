@@ -8,6 +8,13 @@ import {
   Purchase,
   Warranty,
   WarrantyServiceHistory,
+  WarrantyClaim,
+  WarrantyReplacement,
+  WarrantyExtension,
+  VerificationLog,
+  NotificationTemplate,
+  WarrantySettings,
+  ClaimStatus,
   Account,
   JournalEntry,
   CMSBanner,
@@ -32,7 +39,9 @@ import {
   INITIAL_CMS_BANNERS,
   INITIAL_CMS_VIDEOS,
   INITIAL_HOMEPAGE_CONTENT,
-  INITIAL_AUDIT_LOGS
+  INITIAL_AUDIT_LOGS,
+  INITIAL_NOTIFICATION_TEMPLATES,
+  INITIAL_WARRANTY_SETTINGS
 } from '../data/initialData';
 import {
   auth,
@@ -91,12 +100,37 @@ interface AppContextType {
     orderSource: OrderSource;
   }) => { sale: Sale; warranty: Warranty } | { error: string };
 
-  // Warranties & Services
+  // Warranties & Automated Lifecycle
   warranties: Warranty[];
   getWarrantyByIdOrMobile: (query: string) => Warranty | undefined;
   getWarrantiesByMobile: (mobile: string) => Warranty[];
   updateWarrantyStatus: (warrantyId: string, status: 'Active' | 'Expired' | 'Void', remarks?: string) => void;
+  activateWarranty: (warrantyId: string) => void;
   addServiceHistory: (warrantyId: string, service: Omit<WarrantyServiceHistory, 'id' | 'warrantyId'>) => void;
+
+  // Automated Warranty Claims Pipeline
+  claims: WarrantyClaim[];
+  submitClaim: (claimData: Omit<WarrantyClaim, 'id' | 'status' | 'submittedAt'>) => WarrantyClaim | { error: string };
+  updateClaimStatus: (claimId: string, status: ClaimStatus, details?: any) => void;
+  addInspection: (claimId: string, inspection: NonNullable<WarrantyClaim['inspection']>) => void;
+  approveClaim: (claimId: string, approval: NonNullable<WarrantyClaim['approval']>) => void;
+  updateRepair: (claimId: string, repair: NonNullable<WarrantyClaim['repair']>) => void;
+  passQualityCheck: (claimId: string, qc: NonNullable<WarrantyClaim['qualityCheck']>) => void;
+  collectClaim: (claimId: string, collection: NonNullable<WarrantyClaim['collection']>) => void;
+
+  // Replacements & Extensions
+  replacements: WarrantyReplacement[];
+  createReplacement: (rep: Omit<WarrantyReplacement, 'id' | 'date'>) => WarrantyReplacement;
+  extensions: WarrantyExtension[];
+  extendWarranty: (ext: Omit<WarrantyExtension, 'id' | 'createdAt'>) => WarrantyExtension;
+
+  // Verification Audit Logs & Configuration
+  verificationLogs: VerificationLog[];
+  logVerification: (warrantyId: string, method: VerificationLog['method'], result: VerificationLog['result']) => void;
+  notificationTemplates: NotificationTemplate[];
+  updateNotificationTemplates: (templates: NotificationTemplate[]) => void;
+  warrantySettings: WarrantySettings;
+  updateWarrantySettings: (settings: Partial<WarrantySettings>) => void;
 
   // Purchases
   purchases: Purchase[];
@@ -154,11 +188,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [homepageContent, setHomepageContent] = useState<CMSHomepageContent>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_homepage_content`);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.brandTitle && (parsed.brandTitle.includes('PREMIUM') || parsed.brandTitle.includes('SAMAYA') || parsed.brandTitle.includes('समय- THE WATCH'))) {
-        return { ...parsed, brandTitle: 'समय-The Watch Store', brandSubtitle: '' };
+      try {
+        const parsed = JSON.parse(saved);
+        if (!parsed.brandTitle || parsed.brandTitle !== 'कल्प') {
+          const updated = { ...parsed, brandTitle: 'कल्प', brandSubtitle: '' };
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(updated));
+          return updated;
+        }
+        return parsed;
+      } catch (e) {
+        console.error('Error parsing saved homepage_content:', e);
       }
-      return parsed;
     }
     return INITIAL_HOMEPAGE_CONTENT;
   });
@@ -194,6 +234,80 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const isRemoteUpdateRef = useRef(false);
   const isQuotaExceededRef = useRef(false);
+  const hasLoadedFromFirestoreRef = useRef(false);
+
+  // Helper functions to save entity collections to Firestore & LocalStorage instantly
+  const saveProductsCloud = (next: Product[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'products'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { products: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveSalesCloud = (next: Sale[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'sales'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { sales: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveCustomersCloud = (next: Customer[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_customers`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'customers'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { customers: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveWarrantiesCloud = (next: Warranty[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranties`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'warranties'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { warranties: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const savePurchasesCloud = (next: Purchase[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_purchases`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'purchases'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { purchases: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveUsersCloud = (next: User[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'users'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { users: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveAccountsCloud = (next: Account[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'accounts'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { accounts: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveJournalEntriesCloud = (next: JournalEntry[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_journal_entries`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'journalEntries'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { journalEntries: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
+
+  const saveSuppliersCloud = (next: Supplier[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_suppliers`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'suppliers'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'data'), { suppliers: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+    }
+  };
 
   // Realtime Firestore listeners for Homepage CMS & ERP Store Data
   useEffect(() => {
@@ -250,9 +364,38 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       console.log('Firestore banners listener notice:', err);
     });
 
+    // Modular Products Listener
+    const unsubProductsDoc = onSnapshot(doc(db, 'erp_store', 'products'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          isRemoteUpdateRef.current = true;
+          hasLoadedFromFirestoreRef.current = true;
+          setProducts(data.items);
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(data.items));
+          setTimeout(() => { isRemoteUpdateRef.current = false; }, 500);
+        }
+      }
+    }, (err) => console.log('Products listener notice:', err));
+
+    // Modular Sales Listener
+    const unsubSalesDoc = onSnapshot(doc(db, 'erp_store', 'sales'), (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          isRemoteUpdateRef.current = true;
+          hasLoadedFromFirestoreRef.current = true;
+          setSales(data.items);
+          localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(data.items));
+          setTimeout(() => { isRemoteUpdateRef.current = false; }, 500);
+        }
+      }
+    }, (err) => console.log('Sales listener notice:', err));
+
     // 3. Main ERP Store Data listener (sales, products, customers, warranties, purchases, accounts, journalEntries, suppliers, auditLogs)
     const erpRef = doc(db, 'erp_store', 'data');
     const unsubErp = onSnapshot(erpRef, (snapshot) => {
+      hasLoadedFromFirestoreRef.current = true;
       if (snapshot.exists()) {
         const data = snapshot.data();
         isRemoteUpdateRef.current = true;
@@ -301,6 +444,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       unsubContent();
       unsubVideo();
       unsubBanners();
+      unsubProductsDoc();
+      unsubSalesDoc();
       unsubErp();
     };
   }, []);
@@ -436,6 +581,36 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : INITIAL_CMS_VIDEOS;
   });
 
+  const [claims, setClaims] = useState<WarrantyClaim[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_claims`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [replacements, setReplacements] = useState<WarrantyReplacement[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_replacements`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [extensions, setExtensions] = useState<WarrantyExtension[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_extensions`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [verificationLogs, setVerificationLogs] = useState<VerificationLog[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_verification_logs`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [notificationTemplates, setNotificationTemplates] = useState<NotificationTemplate[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_notification_templates`);
+    return saved ? JSON.parse(saved) : INITIAL_NOTIFICATION_TEMPLATES;
+  });
+
+  const [warrantySettings, setWarrantySettings] = useState<WarrantySettings>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_warranty_settings`);
+    return saved ? JSON.parse(saved) : INITIAL_WARRANTY_SETTINGS;
+  });
+
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_audit_logs`);
     if (!saved) return INITIAL_AUDIT_LOGS;
@@ -459,6 +634,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(sales));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_purchases`, JSON.stringify(purchases));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranties`, JSON.stringify(warranties));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_claims`, JSON.stringify(claims));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_replacements`, JSON.stringify(replacements));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_extensions`, JSON.stringify(extensions));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_verification_logs`, JSON.stringify(verificationLogs));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_notification_templates`, JSON.stringify(notificationTemplates));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranty_settings`, JSON.stringify(warrantySettings));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(accounts));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_journal_entries`, JSON.stringify(journalEntries));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(banners));
@@ -466,8 +647,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(homepageContent));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs));
 
-    // Do not re-push if this state update was triggered by an incoming Firestore snapshot or if quota is exceeded
-    if (isRemoteUpdateRef.current || isQuotaExceededRef.current) {
+    // Do not re-push if remote data not loaded yet, or if this state update was triggered by an incoming Firestore snapshot, or if quota is exceeded
+    if (!hasLoadedFromFirestoreRef.current || isRemoteUpdateRef.current || isQuotaExceededRef.current) {
       return;
     }
 
@@ -482,6 +663,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         suppliers,
         purchases,
         warranties,
+        claims,
+        replacements,
+        extensions,
+        verificationLogs,
+        notificationTemplates,
+        warrantySettings,
         accounts,
         journalEntries,
         auditLogs,
@@ -495,7 +682,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [users, products, customers, suppliers, sales, purchases, warranties, accounts, journalEntries, banners, videos, homepageContent, auditLogs]);
+  }, [users, products, customers, suppliers, sales, purchases, warranties, claims, replacements, extensions, verificationLogs, notificationTemplates, warrantySettings, accounts, journalEntries, banners, videos, homepageContent, auditLogs]);
 
   const loginStaffUser = (username: string, password: string): boolean => {
     const trimmedUser = username.trim().toLowerCase();
@@ -589,7 +776,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ...userData,
       id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`
     };
-    setUsers(prev => [...prev, newUser]);
+    setUsers(prev => {
+      const next = [...prev, newUser];
+      saveUsersCloud(next);
+      return next;
+    });
     logAction('Created User', 'User Management', `Added user ${newUser.name} as ${newUser.role}`);
   };
 
@@ -597,7 +788,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (currentUser.role !== 'Super Admin' && currentUser.id !== updatedUser.id) return;
     setUsers(prev => {
       const nextUsers = prev.map(u => u.id === updatedUser.id ? updatedUser : u);
-      setDoc(doc(db, 'erp_store', 'data'), { users: nextUsers, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      saveUsersCloud(nextUsers);
       return nextUsers;
     });
     if (currentUser.id === updatedUser.id) {
@@ -613,6 +804,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     
     const remainingUsers = users.filter(u => u.id !== id);
     setUsers(remainingUsers);
+    saveUsersCloud(remainingUsers);
     
     if (currentUser.id === id && remainingUsers.length > 0) {
       setCurrentUser(remainingUsers[0]);
@@ -622,13 +814,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateUserRole = (id: string, role: Role) => {
     if (currentUser.role !== 'Super Admin') return;
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u));
+    setUsers(prev => {
+      const next = prev.map(u => u.id === id ? { ...u, role } : u);
+      saveUsersCloud(next);
+      return next;
+    });
     logAction('Updated User Role', 'User Management', `Updated role for user ID ${id} to ${role}`);
   };
 
   const toggleUserActive = (id: string) => {
     if (currentUser.role !== 'Super Admin') return;
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, active: !u.active } : u));
+    setUsers(prev => {
+      const next = prev.map(u => u.id === id ? { ...u, active: !u.active } : u);
+      saveUsersCloud(next);
+      return next;
+    });
   };
 
   const addProduct = (prodData: Omit<Product, 'id' | 'soldQuantity' | 'reservedStock'>) => {
@@ -638,32 +838,48 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       soldQuantity: 0,
       reservedStock: 0,
     };
-    setProducts(prev => [newProd, ...prev]);
+    setProducts(prev => {
+      const next = [newProd, ...prev];
+      saveProductsCloud(next);
+      return next;
+    });
     logAction('Created Product', 'Inventory', `Added product ${newProd.brand} ${newProd.model} (SKU: ${newProd.sku})`);
   };
 
   const updateProduct = (updated: Product) => {
-    setProducts(prev => prev.map(p => p.id === updated.id ? updated : p));
+    setProducts(prev => {
+      const next = prev.map(p => p.id === updated.id ? updated : p);
+      saveProductsCloud(next);
+      return next;
+    });
     logAction('Updated Product', 'Inventory', `Updated product ${updated.brand} ${updated.model}`);
   };
 
   const deleteProduct = (id: string) => {
     if (currentUser.role !== 'Super Admin') return;
-    setProducts(prev => prev.filter(p => p.id !== id));
+    setProducts(prev => {
+      const next = prev.filter(p => p.id !== id);
+      saveProductsCloud(next);
+      return next;
+    });
     logAction('Deleted Product', 'Inventory', `Deleted product ID ${id}`);
   };
 
   const adjustStock = (productId: string, quantityChange: number, reason: string) => {
-    setProducts(prev => prev.map(p => {
-      if (p.id === productId) {
-        const newStock = Math.max(0, p.stock + quantityChange);
-        let newStatus: Product['status'] = 'In Stock';
-        if (newStock === 0) newStatus = 'Out of Stock';
-        else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
-        return { ...p, stock: newStock, status: newStatus };
-      }
-      return p;
-    }));
+    setProducts(prev => {
+      const next = prev.map(p => {
+        if (p.id === productId) {
+          const newStock = Math.max(0, p.stock + quantityChange);
+          let newStatus: Product['status'] = 'In Stock';
+          if (newStock === 0) newStatus = 'Out of Stock';
+          else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
+          return { ...p, stock: newStock, status: newStatus };
+        }
+        return p;
+      });
+      saveProductsCloud(next);
+      return next;
+    });
     logAction('Adjusted Stock', 'Inventory', `Adjusted stock for ${productId} by ${quantityChange}. Reason: ${reason}`);
   };
 
@@ -677,7 +893,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       totalPurchases: 0,
       createdAt: new Date().toISOString().substring(0, 10)
     };
-    setCustomers(prev => [...prev, newCust]);
+    setCustomers(prev => {
+      const next = [...prev, newCust];
+      saveCustomersCloud(next);
+      return next;
+    });
     logAction('Created Customer', 'Customer CRM', `Added customer ${newCust.name} (${newCust.mobile})`);
     return newCust;
   };
@@ -688,7 +908,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: `sup-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       balanceDue: 0
     };
-    setSuppliers(prev => [...prev, newSup]);
+    setSuppliers(prev => {
+      const next = [...prev, newSup];
+      saveSuppliersCloud(next);
+      return next;
+    });
     logAction('Created Supplier', 'Purchases', `Added supplier ${newSup.name}`);
   };
 
@@ -793,7 +1017,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       warrantyStart: startDate.toISOString().substring(0, 10),
       warrantyEnd: endDate.toISOString().substring(0, 10),
       status: 'Active',
-      dealerName: 'समय- The Watch Store',
+      dealerName: 'कल्प',
       invoiceNumber,
       remarks: `Official ${product.brand} International Warranty. Inspected prior to dispatch.`,
       serviceHistory: []
@@ -882,21 +1106,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       ]
     };
 
-    setJournalEntries(prev => [saleJE, cogsJE, ...prev]);
+    setJournalEntries(prev => {
+      const next = [saleJE, cogsJE, ...prev];
+      saveJournalEntriesCloud(next);
+      return next;
+    });
 
     // Update Chart of Account balances
-    setAccounts(prev => prev.map(acc => {
-      if (acc.id === saleJE.lines[0].accountId) return { ...acc, balance: acc.balance + finalTotal };
-      if (acc.id === 'acc-4010') return { ...acc, balance: acc.balance + sellingPrice };
-      if (acc.id === 'acc-2020') return { ...acc, balance: acc.balance + vatAmount };
-      if (acc.id === 'acc-5010') return { ...acc, balance: acc.balance + cogs };
-      if (acc.id === 'acc-1200') return { ...acc, balance: Math.max(0, acc.balance - cogs) };
-      return acc;
-    }));
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        if (acc.id === saleJE.lines[0].accountId) return { ...acc, balance: acc.balance + finalTotal };
+        if (acc.id === 'acc-4010') return { ...acc, balance: acc.balance + sellingPrice };
+        if (acc.id === 'acc-2020') return { ...acc, balance: acc.balance + vatAmount };
+        if (acc.id === 'acc-5010') return { ...acc, balance: acc.balance + cogs };
+        if (acc.id === 'acc-1200') return { ...acc, balance: Math.max(0, acc.balance - cogs) };
+        return acc;
+      });
+      saveAccountsCloud(next);
+      return next;
+    });
 
     // 7. Save Sale and Warranty
-    setSales(prev => [newSale, ...prev]);
-    setWarranties(prev => [newWarranty, ...prev]);
+    setSales(prev => {
+      const next = [newSale, ...prev];
+      saveSalesCloud(next);
+      return next;
+    });
+    setWarranties(prev => {
+      const next = [newWarranty, ...prev];
+      saveWarrantiesCloud(next);
+      return next;
+    });
 
     logAction('Created Sale & Warranty', 'Sales & ERP', `Created Invoice #${invoiceNumber} for ${cust.name}. Generated Warranty ID #${warrantyId}. Stock decreased by 1.`);
 
@@ -923,8 +1163,228 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateWarrantyStatus = (warrantyId: string, status: 'Active' | 'Expired' | 'Void', remarks?: string) => {
-    setWarranties(prev => prev.map(w => w.id === warrantyId ? { ...w, status, remarks: remarks || w.remarks } : w));
+    setWarranties(prev => {
+      const next = prev.map(w => w.id === warrantyId ? { ...w, status, remarks: remarks || w.remarks } : w);
+      saveWarrantiesCloud(next);
+      return next;
+    });
     logAction('Updated Warranty Status', 'Warranty', `Updated warranty ${warrantyId} to ${status}`);
+  };
+
+  const activateWarranty = (warrantyId: string) => {
+    setWarranties(prev => {
+      const next = prev.map(w => {
+        if (w.id === warrantyId) {
+          return {
+            ...w,
+            status: 'Active' as const,
+            activationStatus: 'Active' as const,
+            activatedAt: new Date().toISOString(),
+            activatedBy: currentUser.name
+          };
+        }
+        return w;
+      });
+      saveWarrantiesCloud(next);
+      return next;
+    });
+    logAction('Activated Warranty', 'Warranty Lifecycle', `Manually activated digital warranty #${warrantyId} by ${currentUser.name}`);
+  };
+
+  // Warranty Claims Pipeline
+  const submitClaim = (claimData: Omit<WarrantyClaim, 'id' | 'status' | 'submittedAt'>): WarrantyClaim | { error: string } => {
+    const targetWarranty = warranties.find(w => w.id === claimData.warrantyId);
+    if (!targetWarranty) {
+      return { error: 'Warranty record not found for this claim.' };
+    }
+    if (targetWarranty.status === 'Void') {
+      return { error: 'This warranty has been marked VOID due to unauthorized tampering or policy violation.' };
+    }
+
+    const currentYear = new Date().getFullYear();
+    const claimSeq = String(claims.length + 1).padStart(4, '0');
+    const claimId = `${warrantySettings.claimPrefix}${currentYear}-${claimSeq}`;
+
+    const newClaim: WarrantyClaim = {
+      ...claimData,
+      id: claimId,
+      status: 'Submitted',
+      submittedAt: new Date().toISOString()
+    };
+
+    setClaims(prev => [newClaim, ...prev]);
+
+    // Increment claim count on warranty
+    setWarranties(prev => prev.map(w => w.id === targetWarranty.id ? { ...w, claimCount: (w.claimCount || 0) + 1, lastActivity: new Date().toISOString() } : w));
+
+    logAction('Submitted Warranty Claim', 'Warranty Claims', `Registered Claim #${claimId} for Warranty #${claimData.warrantyId}`);
+    return newClaim;
+  };
+
+  const updateClaimStatus = (claimId: string, status: ClaimStatus, details?: any) => {
+    setClaims(prev => prev.map(c => c.id === claimId ? { ...c, status, ...details } : c));
+    logAction('Updated Claim Status', 'Warranty Claims', `Claim #${claimId} status changed to ${status}`);
+  };
+
+  const addInspection = (claimId: string, inspection: NonNullable<WarrantyClaim['inspection']>) => {
+    setClaims(prev => prev.map(c => {
+      if (c.id === claimId) {
+        return {
+          ...c,
+          status: inspection.coverage === 'Not Covered' ? 'Rejected' : 'Under Inspection',
+          inspection
+        };
+      }
+      return c;
+    }));
+    logAction('Recorded Inspection', 'Warranty Inspection', `Added inspection report for Claim #${claimId}: Coverage ${inspection.coverage}`);
+  };
+
+  const approveClaim = (claimId: string, approval: NonNullable<WarrantyClaim['approval']>) => {
+    setClaims(prev => prev.map(c => {
+      if (c.id === claimId) {
+        const nextStatus = approval.status === 'Rejected' ? 'Rejected' : 'Approved';
+        return {
+          ...c,
+          status: nextStatus,
+          approval
+        };
+      }
+      return c;
+    }));
+    logAction('Claim Decision', 'Warranty Claims', `Decision for Claim #${claimId}: ${approval.status}`);
+  };
+
+  const updateRepair = (claimId: string, repair: NonNullable<WarrantyClaim['repair']>) => {
+    setClaims(prev => prev.map(c => {
+      if (c.id === claimId) {
+        return {
+          ...c,
+          status: repair.completionDate ? 'Quality Check' : 'In Repair',
+          repair
+        };
+      }
+      return c;
+    }));
+
+    // Add service log to the original warranty
+    const targetClaim = claims.find(c => c.id === claimId);
+    if (targetClaim && repair.actionTaken) {
+      addServiceHistory(targetClaim.warrantyId, {
+        serviceDate: repair.completionDate || new Date().toISOString().substring(0, 10),
+        issue: targetClaim.problemDescription,
+        repairDetails: repair.actionTaken,
+        technician: repair.technician,
+        remarks: repair.partsUsed ? `Parts used: ${repair.partsUsed}` : undefined
+      });
+    }
+
+    logAction('Updated Repair Log', 'Warranty Repair', `Recorded repair updates for Claim #${claimId}`);
+  };
+
+  const passQualityCheck = (claimId: string, qc: NonNullable<WarrantyClaim['qualityCheck']>) => {
+    setClaims(prev => prev.map(c => {
+      if (c.id === claimId) {
+        return {
+          ...c,
+          status: qc.passed ? 'Ready for Collection' : 'In Repair',
+          qualityCheck: qc
+        };
+      }
+      return c;
+    }));
+    logAction('Quality Check', 'QC Department', `QC for Claim #${claimId}: ${qc.passed ? 'PASSED' : 'FAILED - RETURNED TO REPAIR'}`);
+  };
+
+  const collectClaim = (claimId: string, collection: NonNullable<WarrantyClaim['collection']>) => {
+    setClaims(prev => prev.map(c => {
+      if (c.id === claimId) {
+        return {
+          ...c,
+          status: 'Collected / Closed',
+          collection
+        };
+      }
+      return c;
+    }));
+    logAction('Collected Claim', 'Customer Service', `Watch collected for Claim #${claimId}. OTP Verified: ${collection.otpVerified}`);
+  };
+
+  // Replacements & Extensions
+  const createReplacement = (repData: Omit<WarrantyReplacement, 'id' | 'date'>): WarrantyReplacement => {
+    const newRep: WarrantyReplacement = {
+      ...repData,
+      id: `REP-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      date: new Date().toISOString().substring(0, 10)
+    };
+    setReplacements(prev => [newRep, ...prev]);
+
+    // Re-link warranty product ID to replacement product
+    setWarranties(prev => prev.map(w => {
+      if (w.id === repData.originalWarrantyId) {
+        return {
+          ...w,
+          productId: repData.replacementProductId,
+          productBrand: 'कल्प Replacement',
+          productModel: repData.replacementProductName,
+          serialNumber: repData.replacementSerialNumber,
+          remarks: `Watch replaced on ${newRep.date}. Original: ${w.productModel}`
+        };
+      }
+      return w;
+    }));
+
+    logAction('Created Watch Replacement', 'Warranty Management', `Replaced watch for Warranty #${repData.originalWarrantyId} with ${repData.replacementProductName}`);
+    return newRep;
+  };
+
+  const extendWarranty = (extData: Omit<WarrantyExtension, 'id' | 'createdAt'>): WarrantyExtension => {
+    const newExt: WarrantyExtension = {
+      ...extData,
+      id: `EXT-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      createdAt: new Date().toISOString()
+    };
+    setExtensions(prev => [newExt, ...prev]);
+
+    // Extend warranty end date
+    setWarranties(prev => prev.map(w => {
+      if (w.id === extData.warrantyId) {
+        const currentEnd = new Date(w.extendedEnd || w.warrantyEnd);
+        currentEnd.setMonth(currentEnd.getMonth() + extData.extensionMonths);
+        return {
+          ...w,
+          extendedEnd: currentEnd.toISOString().substring(0, 10),
+          extensionReason: extData.reason,
+          status: 'Active'
+        };
+      }
+      return w;
+    }));
+
+    logAction('Extended Warranty Term', 'Warranty Management', `Extended Warranty #${extData.warrantyId} by ${extData.extensionMonths} months. New expiry: ${newExt.newExpiry}`);
+    return newExt;
+  };
+
+  // Verification Audit Logging
+  const logVerification = (warrantyId: string, method: VerificationLog['method'], result: VerificationLog['result']) => {
+    const newLog: VerificationLog = {
+      id: `vlog-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      warrantyId,
+      method,
+      timestamp: new Date().toISOString(),
+      result
+    };
+    setVerificationLogs(prev => [newLog, ...prev.slice(0, 100)]);
+  };
+
+  const updateNotificationTemplates = (templates: NotificationTemplate[]) => {
+    setNotificationTemplates(templates);
+    logAction('Updated Notification Templates', 'Settings', 'Updated automated SMS/WhatsApp templates');
+  };
+
+  const updateWarrantySettings = (settings: Partial<WarrantySettings>) => {
+    setWarrantySettings(prev => ({ ...prev, ...settings }));
+    logAction('Updated Warranty Settings', 'Settings', 'Updated global warranty configuration and terms');
   };
 
   const addServiceHistory = (warrantyId: string, service: Omit<WarrantyServiceHistory, 'id' | 'warrantyId'>) => {
@@ -934,15 +1394,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       warrantyId
     };
 
-    setWarranties(prev => prev.map(w => {
-      if (w.id === warrantyId) {
-        return {
-          ...w,
-          serviceHistory: [newService, ...(w.serviceHistory || [])]
-        };
-      }
-      return w;
-    }));
+    setWarranties(prev => {
+      const next = prev.map(w => {
+        if (w.id === warrantyId) {
+          return {
+            ...w,
+            serviceHistory: [newService, ...(w.serviceHistory || [])]
+          };
+        }
+        return w;
+      });
+      saveWarrantiesCloud(next);
+      return next;
+    });
 
     logAction('Added Service Record', 'Warranty', `Added repair record for Warranty ${warrantyId}: ${service.issue}`);
   };
@@ -988,7 +1452,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       adjustStock(item.productId, item.quantity, `Purchase Order #${purchaseData.invoiceNumber}`);
     });
 
-    setPurchases(prev => [newPurchase, ...prev]);
+    setPurchases(prev => {
+      const next = [newPurchase, ...prev];
+      savePurchasesCloud(next);
+      return next;
+    });
 
     // Accounting Entry
     const purchaseJE: JournalEntry = {
@@ -1003,21 +1471,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         { accountId: payAcc.id, accountCode: payAccCode, accountName: payAcc.name, debit: 0, credit: purchaseData.cost }
       ]
     };
-    setJournalEntries(prev => [purchaseJE, ...prev]);
+    setJournalEntries(prev => {
+      const next = [purchaseJE, ...prev];
+      saveJournalEntriesCloud(next);
+      return next;
+    });
 
     // Update Chart of Account balances
-    setAccounts(prev => prev.map(acc => {
-      if (acc.code === '1200') return { ...acc, balance: acc.balance + purchaseData.cost };
-      if (acc.code === payAccCode) {
-        if (payAccCode.startsWith('1')) return { ...acc, balance: acc.balance - purchaseData.cost };
-        return { ...acc, balance: acc.balance + purchaseData.cost };
-      }
-      return acc;
-    }));
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        if (acc.code === '1200') return { ...acc, balance: acc.balance + purchaseData.cost };
+        if (acc.code === payAccCode) {
+          if (payAccCode.startsWith('1')) return { ...acc, balance: acc.balance - purchaseData.cost };
+          return { ...acc, balance: acc.balance + purchaseData.cost };
+        }
+        return acc;
+      });
+      saveAccountsCloud(next);
+      return next;
+    });
 
     // Update Supplier balance due if on credit
     if (purchaseData.supplierId && payAccCode === '2010') {
-      setSuppliers(prev => prev.map(s => s.id === purchaseData.supplierId ? { ...s, balanceDue: s.balanceDue + purchaseData.cost } : s));
+      setSuppliers(prev => {
+        const next = prev.map(s => s.id === purchaseData.supplierId ? { ...s, balanceDue: s.balanceDue + purchaseData.cost } : s);
+        saveSuppliersCloud(next);
+        return next;
+      });
     }
 
     logAction('Created Purchase Order', 'Purchases', `Purchased ${purchaseData.quantity} watches total cost NPR ${purchaseData.cost.toLocaleString()} via ${payAcc.name}`);
@@ -1027,19 +1507,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const target = purchases.find(p => p.id === id);
     if (!target) return;
 
-    setPurchases(prev => prev.filter(p => p.id !== id));
-    setJournalEntries(prev => prev.filter(je => je.reference !== target.invoiceNumber && !je.id.includes(id)));
+    setPurchases(prev => {
+      const next = prev.filter(p => p.id !== id);
+      savePurchasesCloud(next);
+      return next;
+    });
+    setJournalEntries(prev => {
+      const next = prev.filter(je => je.reference !== target.invoiceNumber && !je.id.includes(id));
+      saveJournalEntriesCloud(next);
+      return next;
+    });
 
     // Revert account balances
-    setAccounts(prev => prev.map(acc => {
-      if (acc.code === '1200') return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
-      if (acc.code === '2010') return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
-      return acc;
-    }));
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        if (acc.code === '1200') return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
+        if (acc.code === '2010') return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
+        return acc;
+      });
+      saveAccountsCloud(next);
+      return next;
+    });
 
     // Update supplier balance due
     if (target.supplierId) {
-      setSuppliers(prev => prev.map(s => s.id === target.supplierId ? { ...s, balanceDue: Math.max(0, s.balanceDue - target.cost) } : s));
+      setSuppliers(prev => {
+        const next = prev.map(s => s.id === target.supplierId ? { ...s, balanceDue: Math.max(0, s.balanceDue - target.cost) } : s);
+        saveSuppliersCloud(next);
+        return next;
+      });
     }
 
     logAction('Deleted Purchase Order', 'Purchases', `Deleted purchase order #${target.invoiceNumber} (${target.id}) of NPR ${target.cost.toLocaleString()}`);
@@ -1052,24 +1548,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: `je-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       entryNumber: `JE-MAN-${Date.now().toString().slice(-4)}`
     };
-    setJournalEntries(prev => [newJE, ...prev]);
+    setJournalEntries(prev => {
+      const next = [newJE, ...prev];
+      saveJournalEntriesCloud(next);
+      return next;
+    });
 
     // Automatically update matching account balances
-    setAccounts(prev => prev.map(acc => {
-      const matchingLines = entry.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
-      if (matchingLines.length === 0) return acc;
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        const matchingLines = entry.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
+        if (matchingLines.length === 0) return acc;
 
-      let netChange = 0;
-      matchingLines.forEach(l => {
-        if (acc.category === 'Assets' || acc.category === 'Expenses') {
-          netChange += (l.debit - l.credit);
-        } else {
-          netChange += (l.credit - l.debit);
-        }
+        let netChange = 0;
+        matchingLines.forEach(l => {
+          if (acc.category === 'Assets' || acc.category === 'Expenses') {
+            netChange += (l.debit - l.credit);
+          } else {
+            netChange += (l.credit - l.debit);
+          }
+        });
+
+        return { ...acc, balance: acc.balance + netChange };
       });
-
-      return { ...acc, balance: acc.balance + netChange };
-    }));
+      saveAccountsCloud(next);
+      return next;
+    });
 
     logAction('Added Manual Journal Entry', 'Accounting', `Posted JE #${newJE.entryNumber}: ${entry.description}`);
   };
@@ -1086,7 +1590,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
     setAccounts(prev => {
       const updated = [...prev, newAcc];
-      setDoc(doc(db, 'erp_store', 'data'), { accounts: updated, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      saveAccountsCloud(updated);
       return updated;
     });
     logAction('Added Account', 'Accounting', `Created new account [${newAcc.code}] ${newAcc.name} (${newAcc.category})`);
@@ -1098,7 +1602,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!target) return;
     setAccounts(prev => {
       const updated = prev.filter(a => a.id !== id && a.code !== id);
-      setDoc(doc(db, 'erp_store', 'data'), { accounts: updated, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      saveAccountsCloud(updated);
       return updated;
     });
     logAction('Deleted Account', 'Accounting', `Removed account [${target.code}] ${target.name}`);
@@ -1297,7 +1801,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         getWarrantyByIdOrMobile,
         getWarrantiesByMobile,
         updateWarrantyStatus,
+        activateWarranty,
         addServiceHistory,
+        claims,
+        submitClaim,
+        updateClaimStatus,
+        addInspection,
+        approveClaim,
+        updateRepair,
+        passQualityCheck,
+        collectClaim,
+        replacements,
+        createReplacement,
+        extensions,
+        extendWarranty,
+        verificationLogs,
+        logVerification,
+        notificationTemplates,
+        updateNotificationTemplates,
+        warrantySettings,
+        updateWarrantySettings,
         purchases,
         createPurchase,
         deletePurchase,

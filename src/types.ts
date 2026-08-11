@@ -1,4 +1,4 @@
-export type Role = 'Super Admin' | 'Manager' | 'Sales' | 'Inventory' | 'Account' | 'Marketing';
+export type Role = 'Super Admin' | 'Warranty Manager' | 'Warranty Staff' | 'Technician' | 'Sales Staff' | 'Manager' | 'Sales' | 'Inventory' | 'Account' | 'Marketing';
 
 export interface User {
   id: string;
@@ -125,6 +125,7 @@ export interface Purchase {
 }
 
 export type WarrantyStatus = 'Active' | 'Expired' | 'Void';
+export type WarrantyActivationStatus = 'Pending' | 'Active' | 'Void';
 
 export interface WarrantyServiceHistory {
   id: string;
@@ -152,10 +153,137 @@ export interface Warranty {
   warrantyStart: string; // YYYY-MM-DD
   warrantyEnd: string;   // YYYY-MM-DD
   status: WarrantyStatus;
+  activationStatus: WarrantyActivationStatus;
+  activatedAt?: string;
+  activatedBy?: string;
   remarks?: string;
   dealerName: string;
   invoiceNumber: string;
+  claimCount: number;
+  lastActivity?: string;
+  extendedEnd?: string;
+  extensionReason?: string;
   serviceHistory: WarrantyServiceHistory[];
+}
+
+export type ClaimStatus = 
+  | 'Submitted' 
+  | 'Under Inspection' 
+  | 'Approved' 
+  | 'Partially Approved' 
+  | 'Rejected' 
+  | 'In Repair' 
+  | 'Quality Check' 
+  | 'Ready for Collection' 
+  | 'Collected / Closed';
+
+export interface WarrantyClaim {
+  id: string; // WC-YYYY-XXXX
+  warrantyId: string;
+  customerId: string;
+  customerName: string;
+  customerMobile: string;
+  productId: string;
+  productBrand: string;
+  productModel: string;
+  serialNumber: string;
+  invoiceNumber: string;
+  purchaseDate: string;
+  category: string;
+  problemDescription: string;
+  photos?: string[];
+  status: ClaimStatus;
+  submittedAt: string;
+  inspection?: {
+    inspector: string;
+    inspectionDate: string;
+    coverage: 'Covered' | 'Partially Covered' | 'Not Covered' | 'Further Review';
+    notes: string;
+    payableAmount?: number;
+    rejectionReason?: string;
+  };
+  approval?: {
+    approvedBy: string;
+    approvalDate: string;
+    status: 'Approved' | 'Partially Approved' | 'Rejected';
+    notes?: string;
+  };
+  repair?: {
+    technician: string;
+    assignedAt: string;
+    diagnosis?: string;
+    actionTaken?: string;
+    partsUsed?: string;
+    cost?: number;
+    completionDate?: string;
+    photos?: string[];
+  };
+  qualityCheck?: {
+    checkedBy: string;
+    checkDate: string;
+    timekeepingPassed: boolean;
+    waterResistancePassed: boolean;
+    crownDatePassed: boolean;
+    aestheticPassed: boolean;
+    passed: boolean;
+  };
+  collection?: {
+    collectedAt: string;
+    staffName: string;
+    otpVerified: boolean;
+    signature?: string;
+    customerConfirmation: boolean;
+  };
+}
+
+export interface WarrantyReplacement {
+  id: string;
+  originalWarrantyId: string;
+  originalProductId: string;
+  replacementProductId: string;
+  replacementProductName: string;
+  replacementSerialNumber: string;
+  reason: string;
+  approvedBy: string;
+  date: string;
+}
+
+export interface WarrantyExtension {
+  id: string;
+  warrantyId: string;
+  originalExpiry: string;
+  extensionMonths: number;
+  newExpiry: string;
+  reason: string;
+  approvedBy: string;
+  createdAt: string;
+}
+
+export interface VerificationLog {
+  id: string;
+  warrantyId: string;
+  method: 'QR Scan' | 'Mobile Search' | 'Warranty ID' | 'OTP';
+  timestamp: string;
+  result: 'Success' | 'Not Found' | 'Expired';
+  ipAddress?: string;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  eventKey: string;
+  title: string;
+  body: string;
+  channels: ('SMS' | 'Email' | 'WhatsApp')[];
+}
+
+export interface WarrantySettings {
+  defaultWarrantyMonths: number;
+  expiryReminderDays: number;
+  gracePeriodDays: number;
+  warrantyPrefix: string;
+  claimPrefix: string;
+  otpProtectionEnabled: boolean;
+  termsNepali: string[];
 }
 
 export type AccountCategory = 'Assets' | 'Liabilities' | 'Equity' | 'Revenue' | 'Expenses';
@@ -236,3 +364,4 @@ export interface AuditLog {
   module: string;
   details: string;
 }
+

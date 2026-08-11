@@ -1,5 +1,6 @@
 import React from 'react';
 import { Watch, ShieldCheck, ArrowUpRight } from 'lucide-react';
+import kalpaLogo from '../assets/kalpa_logo.jpg';
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
@@ -15,13 +16,11 @@ export const Footer: React.FC<FooterProps> = ({ setIsAdminOpen }) => {
           {/* Col 1: Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-800 p-0.5 flex items-center justify-center">
-                <div className="w-full h-full bg-[#050506] rounded-full flex items-center justify-center">
-                  <Watch className="w-5 h-5 text-amber-400" />
-                </div>
+              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-amber-800 p-0.5 flex items-center justify-center overflow-hidden shrink-0">
+                <img src={kalpaLogo} alt="कल्प Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" />
               </div>
-              <span className="font-serif text-lg tracking-widest text-amber-100 font-bold uppercase">
-                समय- THE WATCH <span className="text-amber-500">STORE</span>
+              <span className="font-serif text-xl tracking-wider text-amber-100 font-bold uppercase">
+                कल्प <span className="text-amber-500">• LUXURY TIMEPIECES</span>
               </span>
             </div>
             <p className="text-xs text-zinc-400 leading-relaxed max-w-md">
@@ -83,7 +82,7 @@ export const Footer: React.FC<FooterProps> = ({ setIsAdminOpen }) => {
         {/* Bottom copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-500 gap-4">
           <div>
-            © 2026 समय- The Watch Store. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.
+            © 2026 कल्प • Kalpa Luxury Timepiece Boutique. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.
           </div>
           <div className="flex gap-4">
             <span>Privacy Policy</span>
