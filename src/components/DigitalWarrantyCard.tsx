@@ -158,7 +158,7 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
             {/* Warranty Period Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 bg-zinc-950/90 p-4 rounded-xl border border-zinc-800">
               <div>
-                <span className="text-[10px] font-mono uppercase text-zinc-500 block">Valid From</span>
+                <span className="text-[10px] font-mono uppercase text-zinc-500 block">Valid From (Sales Date)</span>
                 <span className="font-mono text-xs font-bold text-zinc-200">{warranty.warrantyStart}</span>
               </div>
               <div>

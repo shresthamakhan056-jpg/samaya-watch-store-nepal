@@ -1062,16 +1062,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       deliveryStatus: 'Delivered',
       salesPerson: currentUser.name,
       orderSource: saleData.orderSource,
-      orderDate: new Date().toISOString().substring(0, 10),
-      deliveryDate: new Date().toISOString().substring(0, 10),
+      orderDate: (saleData as any).orderDate || new Date().toISOString().substring(0, 10),
+      deliveryDate: (saleData as any).orderDate || new Date().toISOString().substring(0, 10),
       warrantyId,
       createdBy: currentUser.name
     };
 
     // 3. Create Warranty object
-    const startDate = new Date();
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + (product.warrantyMonths || 24));
+    const salesDateStr = newSale.orderDate;
+    const startDateObj = new Date(salesDateStr);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setMonth(endDateObj.getMonth() + (product.warrantyMonths || 12));
 
     const newWarranty: Warranty = {
       id: warrantyId,
@@ -1085,9 +1086,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       dialColor: product.dialColor,
       serialNumber: saleData.serialNumber,
       qrCodeUrl: `https://samaya-watch-store-nepal.ai.studio/warranty?code=${warrantyId}`,
-      warrantyStart: startDate.toISOString().substring(0, 10),
-      warrantyEnd: endDate.toISOString().substring(0, 10),
+      warrantyStart: salesDateStr,
+      warrantyEnd: endDateObj.toISOString().substring(0, 10),
       status: 'Active',
+      activationStatus: 'Active',
+      claimCount: 0,
       dealerName: 'कल्प',
       invoiceNumber,
       remarks: `Official ${product.brand} International Warranty. Inspected prior to dispatch.`,
@@ -1227,7 +1230,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             ...updatedFields,
             sellingPrice,
             discount,
-            netTotal,
             vatAmount: 0,
             finalTotal: netTotal
           };
@@ -1237,12 +1239,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
             setWarranties(wPrev => {
               const wNext = wPrev.map(w => {
                 if (w.id === s.warrantyId || w.invoiceNumber === s.invoiceNumber) {
+                  const salesDate = updatedSale.orderDate || w.warrantyStart;
+                  const startDateObj = new Date(salesDate);
+                  const endDateObj = new Date(startDateObj);
+                  endDateObj.setMonth(endDateObj.getMonth() + 12);
+                  const newWarrantyEnd = endDateObj.toISOString().substring(0, 10);
+
                   return {
                     ...w,
                     customerName: updatedSale.customerName || w.customerName,
                     customerMobile: updatedSale.customerMobile || w.customerMobile,
                     serialNumber: updatedSale.serialNumber || w.serialNumber,
-                    purchaseDate: updatedSale.orderDate || w.purchaseDate,
+                    warrantyStart: salesDate,
+                    warrantyEnd: newWarrantyEnd,
                     invoiceNumber: updatedSale.invoiceNumber || w.invoiceNumber
                   };
                 }
@@ -1264,22 +1273,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Warranty lookup
+  const syncWarrantyWithSalesDate = (w: Warranty): Warranty => {
+    const matchingSale = sales.find(s => s.warrantyId === w.id || s.invoiceNumber === w.invoiceNumber || (s.serialNumber && s.serialNumber === w.serialNumber));
+    const salesDate = matchingSale?.orderDate || w.warrantyStart || new Date().toISOString().substring(0, 10);
+    
+    const startDateObj = new Date(salesDate);
+    const endDateObj = new Date(startDateObj);
+    endDateObj.setMonth(endDateObj.getMonth() + 12);
+    const calculatedEnd = endDateObj.toISOString().substring(0, 10);
+
+    return {
+      ...w,
+      warrantyStart: salesDate,
+      warrantyEnd: w.extendedEnd ? w.warrantyEnd : calculatedEnd
+    };
+  };
+
   const getWarrantyByIdOrMobile = (query: string): Warranty | undefined => {
     const clean = query.trim().toUpperCase();
     if (!clean) return undefined;
 
-    return warranties.find(w =>
+    const found = warranties.find(w =>
       w.id.toUpperCase() === clean ||
       w.serialNumber.toUpperCase() === clean ||
       w.customerMobile.replace(/\D/g, '').endsWith(clean.replace(/\D/g, '')) ||
       w.invoiceNumber.toUpperCase() === clean
     );
+    return found ? syncWarrantyWithSalesDate(found) : undefined;
   };
 
   const getWarrantiesByMobile = (mobile: string): Warranty[] => {
     const clean = mobile.replace(/\D/g, '');
     if (!clean) return [];
-    return warranties.filter(w => w.customerMobile.replace(/\D/g, '').includes(clean));
+    return warranties.filter(w => w.customerMobile.replace(/\D/g, '').includes(clean)).map(syncWarrantyWithSalesDate);
   };
 
   const updateWarrantyStatus = (warrantyId: string, status: 'Active' | 'Expired' | 'Void', remarks?: string) => {

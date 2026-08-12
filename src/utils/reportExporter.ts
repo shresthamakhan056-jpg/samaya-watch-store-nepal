@@ -1126,7 +1126,7 @@ export const exportSingleEstimateBillPDF = async (sale: Sale) => {
 
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(113, 63, 18);
-  doc.text(`Warranty ID: ${sale.warrantyId}  |  Serial No: ${sale.serialNumber}  |  Duration: 12 Months Official Warranty`, 20, finalY + 14);
+  doc.text(`Warranty ID: ${sale.warrantyId}  |  Serial No: ${sale.serialNumber}  |  Valid From: ${sale.orderDate} (12 Months Warranty)`, 20, finalY + 14);
 
   finalY += 30;
 

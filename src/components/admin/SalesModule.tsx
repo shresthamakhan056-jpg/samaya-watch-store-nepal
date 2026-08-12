@@ -71,7 +71,6 @@ export const SalesModule: React.FC = () => {
       serialNumber: editSerialNumber,
       sellingPrice: editSellingPrice,
       discount: editDiscount,
-      netTotal: netTotal,
       finalTotal: netTotal,
       paymentMethod: editPaymentMethod,
       orderSource: editOrderSource,
@@ -85,7 +84,6 @@ export const SalesModule: React.FC = () => {
       setSelectedSaleForInvoice({
         ...selectedSaleForInvoice,
         ...updatedData,
-        netTotal,
         finalTotal: netTotal
       });
     }
@@ -678,6 +676,7 @@ export const SalesModule: React.FC = () => {
                 <div className="bg-zinc-50/90 backdrop-blur-xs p-4 rounded border border-zinc-200 space-y-1">
                   <span className="font-bold text-zinc-700 block uppercase mb-1">Warranty & Payment Details:</span>
                   <p className="font-bold font-mono text-amber-700">Warranty ID: {selectedSaleForInvoice.warrantyId}</p>
+                  <p className="font-mono text-zinc-600">Valid From (Sales Date): {selectedSaleForInvoice.orderDate}</p>
                   <p className="font-mono text-zinc-600">Serial No: {selectedSaleForInvoice.serialNumber}</p>
                   <p className="text-zinc-600">Payment Method: {selectedSaleForInvoice.paymentMethod}</p>
                 </div>

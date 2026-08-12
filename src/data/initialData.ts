@@ -426,7 +426,7 @@ export const INITIAL_NOTIFICATION_TEMPLATES = [
 ];
 
 export const INITIAL_WARRANTY_SETTINGS = {
-  defaultWarrantyMonths: 24,
+  defaultWarrantyMonths: 12,
   expiryReminderDays: 30,
   gracePeriodDays: 14,
   warrantyPrefix: 'WRN-',

@@ -821,7 +821,7 @@ export const WarrantyModule: React.FC = () => {
                 <input
                   type="number"
                   value={warrantySettings.defaultWarrantyMonths}
-                  onChange={(e) => updateWarrantySettings({ defaultWarrantyMonths: parseInt(e.target.value) || 24 })}
+                  onChange={(e) => updateWarrantySettings({ defaultWarrantyMonths: parseInt(e.target.value) || 12 })}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-zinc-100 font-mono"
                 />
               </div>
