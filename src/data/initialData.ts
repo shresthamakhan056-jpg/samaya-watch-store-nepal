@@ -322,13 +322,13 @@ export const INITIAL_WARRANTIES: Warranty[] = [];
 
 export const INITIAL_ACCOUNTS: Account[] = [
   { id: 'acc-1010', code: '1010', name: 'Cash in Hand', category: 'Assets', type: 'Cash', balance: -9800 },
-  { id: 'acc-1020', code: '1020', name: 'Nabil Bank Main Account', category: 'Assets', type: 'Bank', balance: 50000 },
-  { id: 'acc-1030', code: '1030', name: 'eSewa Merchant Wallet', category: 'Assets', type: 'Bank', balance: 15000 },
+  { id: 'acc-1020', code: '1020', name: 'Nabil Bank Main Account', category: 'Assets', type: 'Bank', balance: 0 },
+  { id: 'acc-1030', code: '1030', name: 'eSewa Merchant Wallet', category: 'Assets', type: 'Bank', balance: 0 },
   { id: 'acc-1100', code: '1100', name: 'Accounts Receivable', category: 'Assets', type: 'A/R', balance: 0 },
   { id: 'acc-1200', code: '1200', name: 'Watch Inventory Asset', category: 'Assets', type: 'Inventory', balance: 9800 },
   { id: 'acc-2010', code: '2010', name: 'Accounts Payable (Suppliers)', category: 'Liabilities', type: 'A/P', balance: 0 },
   { id: 'acc-2020', code: '2020', name: 'VAT Payable (13%)', category: 'Liabilities', type: 'VAT', balance: 0 },
-  { id: 'acc-3010', code: '3010', name: 'Owner Capital Equity', category: 'Equity', type: 'Cash', balance: 55200 },
+  { id: 'acc-3010', code: '3010', name: 'Owner Capital Equity', category: 'Equity', type: 'Cash', balance: 0 },
   { id: 'acc-4010', code: '4010', name: 'Watch Sales Revenue', category: 'Revenue', type: 'Sales', balance: 0 },
   { id: 'acc-5010', code: '5010', name: 'Cost of Goods Sold (COGS)', category: 'Expenses', type: 'Purchase', balance: 0 },
   { id: 'acc-5020', code: '5020', name: 'Courier & Logistics Expense', category: 'Expenses', type: 'Courier Charges', balance: 0 },

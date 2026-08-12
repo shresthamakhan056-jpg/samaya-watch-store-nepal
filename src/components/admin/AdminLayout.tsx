@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, ShoppingBag, Package, Layers, ShieldCheck, Calculator, Users, Sparkles, BarChart3, UserCheck, ShieldAlert, Search, X } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Layers, ShieldCheck, Calculator, Users, Sparkles, BarChart3, UserCheck, ShieldAlert, Search, X, Globe } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AdminDashboard } from './AdminDashboard';
 import { SalesModule } from './SalesModule';
@@ -12,6 +12,7 @@ import { MarketingCMS } from './MarketingCMS';
 import { ReportsModule } from './ReportsModule';
 import { UserManagement } from './UserManagement';
 import { AuditLogsModule } from './AuditLogsModule';
+import { DomainGoLiveGuide } from './DomainGoLiveGuide';
 
 interface AdminLayoutProps {
   setIsAdminOpen: (open: boolean) => void;
@@ -20,7 +21,7 @@ interface AdminLayoutProps {
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
   const { currentUser, setCurrentUser, users, globalSearch, loginStaffUser } = useApp();
   const [adminTab, setAdminTab] = useState<
-    'dashboard' | 'sales' | 'purchases' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit'
+    'dashboard' | 'sales' | 'purchases' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit' | 'domain'
   >('dashboard');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,6 +160,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
     { id: 'customers', label: 'Customers & Suppliers', icon: Users },
     { id: 'cms', label: 'Marketing CMS', icon: Sparkles },
     { id: 'reports', label: 'Reports & Tax', icon: BarChart3 },
+    { id: 'domain', label: 'Domain & Go Live', icon: Globe, badge: 'Live Guide' },
     { id: 'users', label: 'Staff Roles (RBAC)', icon: UserCheck },
     { id: 'audit', label: 'Audit Logs', icon: ShieldAlert },
   ];
@@ -337,6 +339,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
         {adminTab === 'customers' && <CustomerSupplierModule />}
         {adminTab === 'cms' && <MarketingCMS />}
         {adminTab === 'reports' && <ReportsModule />}
+        {adminTab === 'domain' && <DomainGoLiveGuide />}
         {adminTab === 'users' && <UserManagement />}
         {adminTab === 'audit' && <AuditLogsModule />}
 

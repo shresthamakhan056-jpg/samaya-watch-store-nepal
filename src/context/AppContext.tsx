@@ -754,6 +754,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     });
   }, []);
 
+  // One-time Account Balance Reset for Nabil Bank (1020), eSewa (1030), and Owner Capital (3010)
+  useEffect(() => {
+    setAccounts(prevAccounts => {
+      let updated = false;
+      const cleaned = prevAccounts.map(a => {
+        if ((a.code === '1020' || a.code === '1030' || a.code === '3010') && a.balance !== 0) {
+          updated = true;
+          return { ...a, balance: 0 };
+        }
+        return a;
+      });
+
+      if (updated) {
+        saveAccountsCloud(cleaned);
+        return cleaned;
+      }
+      return prevAccounts;
+    });
+  }, []);
+
   const loginStaffUser = (username: string, password: string): boolean => {
     const trimmedUser = username.trim().toLowerCase();
     const found = users.find(u => u.username.toLowerCase() === trimmedUser && u.password === password && u.active);
@@ -1827,9 +1847,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return next;
     });
 
-    // Automatically update matching account balances
+    // Automatically update matching account balances & auto-create missing account headings in Chart of Accounts
     setAccounts(prev => {
-      const next = prev.map(acc => {
+      let currentAccounts = [...prev];
+
+      // Auto-detect lines that don't exist in currentAccounts
+      entry.lines.forEach(line => {
+        if (line.accountCode && !currentAccounts.some(a => a.code === line.accountCode)) {
+          const codePrefix = line.accountCode.substring(0, 1);
+          let category: Account['category'] = 'Assets';
+          let type = 'Current Asset';
+
+          if (codePrefix === '2') {
+            category = 'Liabilities';
+            type = 'Current Liability';
+          } else if (codePrefix === '3') {
+            category = 'Equity';
+            type = 'Equity';
+          } else if (codePrefix === '4') {
+            category = 'Revenue';
+            type = 'Operating Revenue';
+          } else if (codePrefix === '5') {
+            category = 'Expenses';
+            type = 'Operating Expense';
+          }
+
+          currentAccounts.push({
+            id: line.accountId || `acc-${line.accountCode}`,
+            code: line.accountCode,
+            name: line.accountName || `Account ${line.accountCode}`,
+            category,
+            type,
+            balance: 0
+          });
+        }
+      });
+
+      const next = currentAccounts.map(acc => {
         const matchingLines = entry.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
         if (matchingLines.length === 0) return acc;
 
@@ -1980,32 +2034,73 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setJournalEntries(updatedJournalEntries);
     }
 
-    // 3. Re-calculate all account balances from journal entries
-    const accountBalancesMap: Record<string, number> = {};
+    // 3. Re-calculate all account balances from journal entries & auto-pull missing account headings
+    setAccounts(prev => {
+      let currentAccounts = [...prev];
 
-    updatedJournalEntries.forEach(je => {
-      je.lines.forEach(line => {
-        if (!accountBalancesMap[line.accountCode]) {
-          accountBalancesMap[line.accountCode] = 0;
-        }
-        const accDef = accounts.find(a => a.code === line.accountCode);
-        const category = accDef?.category || (line.accountCode.startsWith('1') || line.accountCode.startsWith('5') ? 'Assets' : 'Revenue');
+      // Auto-detect journal entry lines with account codes missing from currentAccounts
+      updatedJournalEntries.forEach(je => {
+        je.lines.forEach(line => {
+          if (line.accountCode && !currentAccounts.some(a => a.code === line.accountCode)) {
+            const codePrefix = line.accountCode.substring(0, 1);
+            let category: Account['category'] = 'Assets';
+            let type = 'Current Asset';
 
-        if (category === 'Assets' || category === 'Expenses') {
-          accountBalancesMap[line.accountCode] += (line.debit - line.credit);
-        } else {
-          accountBalancesMap[line.accountCode] += (line.credit - line.debit);
-        }
+            if (codePrefix === '2') {
+              category = 'Liabilities';
+              type = 'Current Liability';
+            } else if (codePrefix === '3') {
+              category = 'Equity';
+              type = 'Equity';
+            } else if (codePrefix === '4') {
+              category = 'Revenue';
+              type = 'Operating Revenue';
+            } else if (codePrefix === '5') {
+              category = 'Expenses';
+              type = 'Operating Expense';
+            }
+
+            currentAccounts.push({
+              id: line.accountId || `acc-${line.accountCode}`,
+              code: line.accountCode,
+              name: line.accountName || `Account ${line.accountCode}`,
+              category,
+              type,
+              balance: 0
+            });
+          }
+        });
       });
-    });
 
-    setAccounts(prev => prev.map(acc => {
-      const computedBal = accountBalancesMap[acc.code];
-      if (computedBal !== undefined) {
-        return { ...acc, balance: computedBal };
-      }
-      return acc;
-    }));
+      const accountBalancesMap: Record<string, number> = {};
+
+      updatedJournalEntries.forEach(je => {
+        je.lines.forEach(line => {
+          if (!accountBalancesMap[line.accountCode]) {
+            accountBalancesMap[line.accountCode] = 0;
+          }
+          const accDef = currentAccounts.find(a => a.code === line.accountCode);
+          const category = accDef?.category || (line.accountCode.startsWith('1') || line.accountCode.startsWith('5') ? 'Assets' : 'Revenue');
+
+          if (category === 'Assets' || category === 'Expenses') {
+            accountBalancesMap[line.accountCode] += (line.debit - line.credit);
+          } else {
+            accountBalancesMap[line.accountCode] += (line.credit - line.debit);
+          }
+        });
+      });
+
+      const next = currentAccounts.map(acc => {
+        const computedBal = accountBalancesMap[acc.code];
+        if (computedBal !== undefined) {
+          return { ...acc, balance: computedBal };
+        }
+        return acc;
+      });
+
+      saveAccountsCloud(next);
+      return next;
+    });
 
     logAction('Journal Data Synced', 'Accounting', `Pulled and recalculated data from ${updatedJournalEntries.length} Journal Entries across Chart of Accounts.`);
 

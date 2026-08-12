@@ -293,7 +293,7 @@ export interface Account {
   code: string; // e.g. "1010"
   name: string;
   category: AccountCategory;
-  type: 'Cash' | 'Bank' | 'Inventory' | 'A/R' | 'A/P' | 'Sales' | 'Purchase' | 'VAT' | 'Expenses' | 'Courier Charges' | 'Discount';
+  type: 'Cash' | 'Bank' | 'Inventory' | 'A/R' | 'A/P' | 'Sales' | 'Purchase' | 'VAT' | 'Expenses' | 'Courier Charges' | 'Discount' | string;
   balance: number;
 }
 
