@@ -337,6 +337,14 @@ export interface CMSVideo {
   active: boolean;
 }
 
+export interface FooterLinkItem {
+  id: string;
+  label: string;
+  active: boolean;
+  content?: string;
+  url?: string;
+}
+
 export interface CMSHomepageContent {
   showroomNotice: string;
   brandTitle: string;
@@ -353,6 +361,19 @@ export interface CMSHomepageContent {
   tiktokLink: string;
   instagramLink: string;
   facebookLink: string;
+  // Dynamic Showroom Boutique Card Properties
+  showroomEnabled?: boolean;
+  showroomTag?: string;
+  showroomTitle?: string;
+  showroomDescription?: string;
+  showroomAddress?: string;
+  showroomContact?: string;
+  showroomPhone?: string;
+  showroomButtonText?: string;
+  // Dynamic Footer Properties
+  footerBrandDescription?: string;
+  footerCopyrightText?: string;
+  footerLinks?: FooterLinkItem[];
 }
 
 export interface AuditLog {

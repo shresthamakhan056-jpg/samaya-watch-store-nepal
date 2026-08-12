@@ -6,7 +6,7 @@ import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { exportInventoryReport, exportInventoryReportPDF } from '../../utils/reportExporter';
 
 export const InventoryModule: React.FC = () => {
-  const { products, addProduct, updateProduct, deleteProduct, adjustStock, suppliers, currentUser } = useApp();
+  const { products, addProduct, updateProduct, deleteProduct, adjustStock, restoreAllStocksExcept, suppliers, currentUser } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBrand, setSelectedBrand] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -310,6 +310,18 @@ export const InventoryModule: React.FC = () => {
           >
             <Download className="w-4 h-4" />
             <span>Download CSV</span>
+          </button>
+          <button
+            onClick={() => {
+              restoreAllStocksExcept('SIK-SLV-01');
+              setSaveSuccessMsg('Restored stock levels for all products except SIK-SLV-01 (Seiko Silver)!');
+              setTimeout(() => setSaveSuccessMsg(''), 4000);
+            }}
+            className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/30 font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-2"
+            title="Restore stock quantities for all items while preserving SIK-SLV-01 sold state"
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Restore Other Items Stock</span>
           </button>
           <button
             onClick={() => setShowAddModal(true)}

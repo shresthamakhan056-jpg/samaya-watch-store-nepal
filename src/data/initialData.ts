@@ -382,7 +382,37 @@ export const INITIAL_HOMEPAGE_CONTENT = {
   socialChannelsText: 'Order directly via: TikTok • Instagram • Facebook Messenger',
   tiktokLink: 'https://tiktok.com',
   instagramLink: 'https://instagram.com',
-  facebookLink: 'https://facebook.com'
+  facebookLink: 'https://facebook.com',
+  showroomEnabled: true,
+  showroomTag: 'Flagship Boutique • Kathmandu, Nepal',
+  showroomTitle: 'Durbar Marg Flagship Showroom',
+  showroomDescription: 'Experience the finest timepieces in an exclusive, private environment. Our watch specialists are ready to guide your selection.',
+  showroomAddress: '📍 Address: Opposite Annapurna Hotel, Durbar Marg, Kathmandu',
+  showroomContact: '📞 Phone: +977 9851234567 | Opening Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
+  showroomPhone: '9779851234567',
+  showroomButtonText: 'Contact Showroom Representative',
+  footerBrandDescription: 'Nepal’s leading luxury timepiece importer & digital warranty pioneer. Specializing in Rolex, Omega, Patek Philippe, Tissot, and Audemars Piguet with verified digital certificates.',
+  footerCopyrightText: '© 2026 कल्प • Kalpa Luxury Timepiece Boutique. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.',
+  footerLinks: [
+    {
+      id: 'link-privacy',
+      label: 'Privacy Policy',
+      active: true,
+      content: 'Kalpa Luxury Timepieces values your privacy. All customer data, purchase records, and warranty registrations are securely stored and encrypted under strict data privacy protocols in our automated ERP engine. We never share customer information with third parties.'
+    },
+    {
+      id: 'link-terms',
+      label: 'Terms of Service',
+      active: true,
+      content: 'All timepieces sold by Kalpa Luxury come with verified digital QR certificates. Returns or exchanges must be presented with the original digital warranty QR code and untouched security seal within 7 days of purchase at our Durbar Marg showroom.'
+    },
+    {
+      id: 'link-care-guide',
+      label: 'Swiss Watch Care Guide',
+      active: true,
+      content: 'Maintain your luxury automatic and quartz movements: Avoid exposure to strong magnetic fields, ensure screw-down crowns are fully engaged before water exposure, and service mechanical movements every 3-5 years at our Durbar Marg showroom.'
+    }
+  ]
 };
 
 export const INITIAL_AUDIT_LOGS: AuditLog[] = [];

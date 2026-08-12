@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, Search, FileText, CheckCircle, ShieldCheck, Printer, ArrowRight, UserPlus, DollarSign, Download, Edit3, Save, X } from 'lucide-react';
+import { Plus, Search, FileText, CheckCircle, ShieldCheck, Printer, ArrowRight, UserPlus, DollarSign, Download, Edit3, Save, X, Trash2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useApp } from '../../context/AppContext';
 import { OrderSource, PaymentMethod, Sale } from '../../types';
 import { exportSalesReport, exportSalesReportPDF, exportSingleEstimateBillPDF } from '../../utils/reportExporter';
+import { DeleteVerificationModal } from './DeleteVerificationModal';
 import kalpaLogo from '../../assets/kalpa_logo.jpg';
 
 export const SalesModule: React.FC = () => {
-  const { products, customers, sales, createSale, updateSale, currentUser } = useApp();
+  const { products, customers, sales, createSale, updateSale, deleteSale, currentUser } = useApp();
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedSaleForInvoice, setSelectedSaleForInvoice] = useState<Sale | null>(null);
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [deletingSaleId, setDeletingSaleId] = useState<string | null>(null);
 
   // Form states for NEW Sale
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -248,6 +250,15 @@ export const SalesModule: React.FC = () => {
                       <FileText className="w-3 h-3" />
                       <span>A4 Bill</span>
                     </button>
+                    {currentUser.role === 'Super Admin' && (
+                      <button
+                        onClick={() => setDeletingSaleId(sale.id)}
+                        className="px-2 py-1.5 rounded bg-rose-500/10 border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 text-[11px] font-sans font-bold cursor-pointer inline-flex items-center gap-1"
+                        title="Delete Sale & Restore Inventory Stock"
+                      >
+                        <Trash2 className="w-3 h-3 text-rose-400" />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -781,6 +792,20 @@ export const SalesModule: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* DELETE VERIFICATION MODAL */}
+      <DeleteVerificationModal
+        isOpen={!!deletingSaleId}
+        title="Delete Sales Order & Restore Stock?"
+        itemName={`Invoice #${sales.find(s => s.id === deletingSaleId)?.invoiceNumber || deletingSaleId} (${sales.find(s => s.id === deletingSaleId)?.customerName})`}
+        onClose={() => setDeletingSaleId(null)}
+        onConfirm={() => {
+          if (deletingSaleId) {
+            deleteSale(deletingSaleId);
+            setDeletingSaleId(null);
+          }
+        }}
+      />
 
     </div>
   );

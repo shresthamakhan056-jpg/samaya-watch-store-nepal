@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, ReactNod
 import {
   User,
   Product,
+  ProductStatus,
   Customer,
   Supplier,
   Sale,
@@ -79,6 +80,7 @@ interface AppContextType {
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
   adjustStock: (productId: string, quantityChange: number, reason: string) => void;
+  restoreAllStocksExcept: (exceptSku?: string) => void;
 
   // Customers & Suppliers
   customers: Customer[];
@@ -104,6 +106,7 @@ interface AppContextType {
     orderSource: OrderSource;
   }) => { sale: Sale; warranty: Warranty } | { error: string };
   updateSale: (saleId: string, updatedFields: Partial<Sale>) => void;
+  deleteSale: (saleId: string) => void;
 
   // Warranties & Automated Lifecycle
   warranties: Warranty[];
@@ -706,6 +709,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timer);
   }, [users, products, customers, suppliers, sales, purchases, warranties, claims, replacements, extensions, verificationLogs, notificationTemplates, warrantySettings, accounts, journalEntries, banners, videos, homepageContent, auditLogs]);
 
+  // One-time Stock Restoration for non-SIK-SLV-01 items
+  useEffect(() => {
+    setProducts(prevProducts => {
+      let updated = false;
+      const restored = prevProducts.map(p => {
+        // If it's the Seiko Silver product (SKU: SIK-SLV-01 or ID: prod-karobar-7), keep stock at 0 and soldQuantity at 1
+        if (p.sku === 'SIK-SLV-01' || p.id === 'prod-karobar-7' || p.model === 'Seiko Silver') {
+          if (p.stock !== 0 || p.soldQuantity !== 1 || p.status !== 'Out of Stock') {
+            updated = true;
+            return {
+              ...p,
+              stock: 0,
+              soldQuantity: 1,
+              status: 'Out of Stock' as ProductStatus
+            };
+          }
+          return p;
+        }
+
+        // For all other products, restore stock from INITIAL_PRODUCTS or base quantity
+        const initProd = INITIAL_PRODUCTS.find(ip => ip.id === p.id || ip.sku === p.sku);
+        const targetStock = initProd ? initProd.stock : Math.max(1, p.stock || 1);
+        const targetSold = 0;
+        const targetStatus: ProductStatus = targetStock > 0 ? 'In Stock' : 'Out of Stock';
+
+        if (p.stock !== targetStock || p.soldQuantity !== targetSold || p.status !== targetStatus) {
+          updated = true;
+          return {
+            ...p,
+            stock: targetStock,
+            soldQuantity: targetSold,
+            status: targetStatus
+          };
+        }
+        return p;
+      });
+
+      if (updated) {
+        saveProductsCloud(restored);
+        return restored;
+      }
+      return prevProducts;
+    });
+  }, []);
+
   const loginStaffUser = (username: string, password: string): boolean => {
     const trimmedUser = username.trim().toLowerCase();
     const found = users.find(u => u.username.toLowerCase() === trimmedUser && u.password === password && u.active);
@@ -954,6 +1002,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Adjusted Stock', 'Inventory', `Adjusted stock for ${productId} by ${quantityChange}. Reason: ${reason}`);
   };
 
+  const restoreAllStocksExcept = (exceptSku: string = 'SIK-SLV-01') => {
+    setProducts(prevProducts => {
+      const restored = prevProducts.map(p => {
+        if (p.sku === exceptSku || p.id === 'prod-karobar-7' || (p.model && p.model.toLowerCase().includes('seiko silver'))) {
+          return {
+            ...p,
+            stock: 0,
+            soldQuantity: 1,
+            status: 'Out of Stock' as ProductStatus
+          };
+        }
+        const initProd = INITIAL_PRODUCTS.find(ip => ip.id === p.id || ip.sku === p.sku);
+        const targetStock = initProd ? initProd.stock : Math.max(1, p.stock || 1);
+        return {
+          ...p,
+          stock: targetStock,
+          soldQuantity: 0,
+          status: (targetStock > 0 ? 'In Stock' : 'Out of Stock') as ProductStatus
+        };
+      });
+      saveProductsCloud(restored);
+      return restored;
+    });
+    logAction('Restored Inventory Stocks', 'Inventory', `Restored inventory quantities for all items except ${exceptSku}`);
+  };
+
   const addCustomer = (custData: Omit<Customer, 'id' | 'totalPurchases' | 'createdAt'>): Customer => {
     const existing = customers.find(c => c.mobile === custData.mobile);
     if (existing) return existing;
@@ -1098,21 +1172,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
 
     // 4. Update Product inventory stock
-    setProducts(prev => prev.map(p => {
-      if (p.id === product.id) {
-        const newStock = p.stock - 1;
-        let newStatus: Product['status'] = 'In Stock';
-        if (newStock === 0) newStatus = 'Out of Stock';
-        else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
-        return {
-          ...p,
-          stock: newStock,
-          soldQuantity: p.soldQuantity + 1,
-          status: newStatus
-        };
-      }
-      return p;
-    }));
+    setProducts(prev => {
+      const next = prev.map(p => {
+        if (p.id === product.id) {
+          const newStock = Math.max(0, p.stock - 1);
+          let newStatus: Product['status'] = 'In Stock';
+          if (newStock === 0) newStatus = 'Out of Stock';
+          else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
+          return {
+            ...p,
+            stock: newStock,
+            soldQuantity: (p.soldQuantity || 0) + 1,
+            status: newStatus
+          };
+        }
+        return p;
+      });
+      saveProductsCloud(next);
+      return next;
+    });
 
     // 5. Update Customer Total Purchases
     setCustomers(prev => prev.map(c => c.id === cust.id ? { ...c, totalPurchases: c.totalPurchases + finalTotal } : c));
@@ -1270,6 +1348,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return next;
     });
     logAction('Updated Sale', 'Sales', `Updated sale order details for ${saleId}`);
+  };
+
+  const deleteSale = (saleId: string) => {
+    if (currentUser.role !== 'Super Admin') return;
+    const targetSale = sales.find(s => s.id === saleId);
+    if (!targetSale) return;
+
+    // 1. Remove sale
+    const remainingSales = sales.filter(s => s.id !== saleId);
+    setSales(remainingSales);
+    saveSalesCloud(remainingSales);
+
+    // 2. Remove matching warranty if exists
+    if (targetSale.warrantyId || targetSale.invoiceNumber) {
+      setWarranties(prev => {
+        const nextWarranties = prev.filter(w => w.id !== targetSale.warrantyId && w.invoiceNumber !== targetSale.invoiceNumber);
+        saveWarrantiesCloud(nextWarranties);
+        return nextWarranties;
+      });
+    }
+
+    // 3. Restore product stock (+1) and decrease soldQuantity (-1)
+    setProducts(prev => {
+      const nextProducts = prev.map(p => {
+        if (
+          p.id === targetSale.productId ||
+          `${p.brand} ${p.model}`.toLowerCase() === targetSale.watchModel.toLowerCase() ||
+          targetSale.watchModel.toLowerCase().includes(p.model.toLowerCase())
+        ) {
+          const restoredStock = p.stock + 1;
+          const restoredSold = Math.max(0, (p.soldQuantity || 0) - 1);
+          let newStatus: Product['status'] = 'In Stock';
+          if (restoredStock === 0) newStatus = 'Out of Stock';
+          else if (restoredStock <= p.reorderLevel) newStatus = 'Low Stock';
+
+          return {
+            ...p,
+            stock: restoredStock,
+            soldQuantity: restoredSold,
+            status: newStatus
+          };
+        }
+        return p;
+      });
+      saveProductsCloud(nextProducts);
+      return nextProducts;
+    });
+
+    logAction('Deleted Sale Order', 'Sales & ERP', `Deleted Invoice #${targetSale.invoiceNumber} for ${targetSale.customerName}. Stock restored by +1.`);
   };
 
   // Warranty lookup
@@ -1937,6 +2064,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateProduct,
         deleteProduct,
         adjustStock,
+        restoreAllStocksExcept,
         customers,
         addCustomer,
         suppliers,
@@ -1944,6 +2072,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         sales,
         createSale,
         updateSale,
+        deleteSale,
         warranties,
         getWarrantyByIdOrMobile,
         getWarrantiesByMobile,
