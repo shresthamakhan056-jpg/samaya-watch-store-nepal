@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Globe, ShieldCheck, CheckCircle2, Copy, ExternalLink, ArrowRight, Server, Lock, Cpu, Sparkles } from 'lucide-react';
 
 export const DomainGoLiveGuide: React.FC = () => {
-  const [domainInput, setDomainInput] = useState('kalpawatches.com');
+  const [domainInput, setDomainInput] = useState('kalpachhen.com');
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const cleanDomain = domainInput.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
