@@ -1,1822 +1,812 @@
-import React, { useState } from 'react';
-import { DollarSign, BookOpen, Scale, FileText, Plus, Calculator, CheckCircle2, Download, RefreshCw, ShieldCheck, Printer, Trash2, UserCheck, Building2, AlertCircle } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import React, { useState, useMemo } from 'react';
 import {
-  exportJournalEntriesReport,
-  exportJournalEntriesReportPDF,
-  exportProfitAndLossReport,
-  exportProfitAndLossReportPDF,
-  exportBalanceSheetReport,
-  exportBalanceSheetReportPDF,
-  exportTrialBalanceReportPDF,
-  exportChartOfAccountsPDF,
-  exportPaymentsReportPDF,
+  TrendingUp,
+  DollarSign,
+  Scale,
+  BookOpen,
+  FileText,
+  ListTree,
+  Building2,
+  Calendar,
+  Layers,
+  Plus,
+  RefreshCw,
+  Download,
+  Printer,
+  FileSpreadsheet,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowUpRight,
+  ArrowDownRight,
+  PieChart,
+  SlidersHorizontal,
+  ChevronRight,
+  Sparkles
+} from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { AccountingEngine } from '../../utils/accountingEngine';
+import {
+  exportProfitAndLossPDF,
+  exportBalanceSheetPDF,
+  exportCashFlowPDF,
+  exportTrialBalancePDF,
   exportToCSV
 } from '../../utils/reportExporter';
+
+// Subcomponents
+import { ExecutiveDashboard } from './accounting/ExecutiveDashboard';
+import { GeneralLedgerView } from './accounting/GeneralLedgerView';
+import { VoucherManagement } from './accounting/VoucherManagement';
+import { ChartOfAccountsView } from './accounting/ChartOfAccountsView';
+import { FixedAssetsView } from './accounting/FixedAssetsView';
+import { FiscalPeriodView } from './accounting/FiscalPeriodView';
+import { UniversalVoucherModal } from './accounting/UniversalVoucherModal';
+import { VoucherType } from '../../types';
 
 export const AccountingModule: React.FC = () => {
   const {
     accounts,
-    addAccount,
-    deleteAccount,
     journalEntries,
     sales,
-    products,
-    suppliers,
-    customers,
     purchases,
-    addJournalEntry,
-    currentUser,
-    syncJournalEntriesAndAccounts
+    fiscalYears,
+    syncJournalEntriesAndAccounts,
+    currentUser
   } = useApp();
-  const [activeTab, setActiveTab] = useState<'pnl' | 'balance' | 'trial' | 'journal' | 'payments' | 'coa'>('pnl');
-  const [pnlSubView, setPnlSubView] = useState<'statement' | 'audit'>('statement');
-  const [lastSyncTime, setLastSyncTime] = useState<string>(new Date().toLocaleTimeString());
-  const [syncNotification, setSyncNotification] = useState<string | null>(null);
 
-  // Payment & Received Entry Modal State
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [entryType, setEntryType] = useState<'Payment' | 'Received'>('Payment');
-  const [methodCode, setMethodCode] = useState<string>('1020'); // Default Nabil Bank
-  const [targetCode, setTargetCode] = useState<string>('5040'); // Default Marketing Expense
-  const [partyName, setPartyName] = useState<string>('');
-  const [amountInput, setAmountInput] = useState<string>('');
-  const [voucherNo, setVoucherNo] = useState<string>('');
-  const [entryDate, setEntryDate] = useState<string>(new Date().toISOString().substring(0, 10));
-  const [entryDescription, setEntryDescription] = useState<string>('');
-  const [paymentSearch, setPaymentSearch] = useState<string>('');
+  const currentFiscalYear = fiscalYears?.find(f => f.isCurrent || f.status === 'Open') || fiscalYears?.[0] || { name: 'FY 2081/82' };
 
-  // Manual General Journal Entry Modal State
-  const [showManualJournalModal, setShowManualJournalModal] = useState(false);
-  const [manualJEDate, setManualJEDate] = useState<string>(new Date().toISOString().substring(0, 10));
-  const [manualJERef, setManualJERef] = useState<string>('');
-  const [manualJEDesc, setManualJEDesc] = useState<string>('');
-  const [manualJELines, setManualJELines] = useState<Array<{
-    type: 'Dr' | 'Cr';
-    accountCode: string;
-    amount: number;
-  }>>([
-    { type: 'Dr', accountCode: '1010', amount: 0 },
-    { type: 'Cr', accountCode: '4010', amount: 0 }
-  ]);
-  const [journalSearch, setJournalSearch] = useState<string>('');
+  type TabType =
+    | 'dashboard'
+    | 'pnl'
+    | 'balance'
+    | 'cashflow'
+    | 'trial'
+    | 'ledger'
+    | 'vouchers'
+    | 'coa'
+    | 'assets'
+    | 'settings';
 
-  const handleOpenManualJournalModal = () => {
-    setManualJEDate(new Date().toISOString().substring(0, 10));
-    setManualJERef(`JE-MAN-${Date.now().toString().slice(-4)}`);
-    setManualJEDesc('');
-    setManualJELines([
-      { type: 'Dr', accountCode: accounts.find(a => a.code === '1010')?.code || accounts[0]?.code || '1010', amount: 0 },
-      { type: 'Cr', accountCode: accounts.find(a => a.code === '4010')?.code || accounts[1]?.code || '4010', amount: 0 }
-    ]);
-    setShowManualJournalModal(true);
+  const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [showVoucherModal, setShowVoucherModal] = useState<boolean>(false);
+  const [modalInitialType, setModalInitialType] = useState<VoucherType>('Journal Voucher');
+  const [syncToast, setSyncToast] = useState<string | null>(null);
+
+  // Financial Engine Computations (Single Source of Truth: General Ledger)
+  const pnl = useMemo(() => {
+    return AccountingEngine.generateProfitAndLoss(journalEntries, accounts);
+  }, [journalEntries, accounts]);
+
+  const balanceSheet = useMemo(() => {
+    return AccountingEngine.generateBalanceSheet(journalEntries, accounts);
+  }, [journalEntries, accounts]);
+
+  const cashFlow = useMemo(() => {
+    return AccountingEngine.generateCashFlow(journalEntries, accounts);
+  }, [journalEntries, accounts]);
+
+  const trialBalance = useMemo(() => {
+    return AccountingEngine.generateTrialBalance(journalEntries, accounts);
+  }, [journalEntries, accounts]);
+
+  // Open voucher modal helper
+  const handleOpenVoucher = (type: VoucherType = 'Journal Voucher') => {
+    setModalInitialType(type);
+    setShowVoucherModal(true);
   };
 
-  const handleAddJELine = (type: 'Dr' | 'Cr' = 'Dr') => {
-    setManualJELines(prev => [
-      ...prev,
-      { type, accountCode: accounts[0]?.code || '1010', amount: 0 }
-    ]);
+  // Sync Ledger Helper
+  const handleSyncLedger = () => {
+    const res = syncJournalEntriesAndAccounts();
+    setSyncToast(`✓ Recalculated General Ledger across ${res.entriesCount} journal entries and ${res.accountsCount} Chart of Accounts! All financial statements synchronized.`);
+    setTimeout(() => setSyncToast(null), 6000);
   };
 
-  const handleRemoveJELine = (index: number) => {
-    if (manualJELines.length <= 2) {
-      alert('A double-entry journal voucher must contain at least 2 lines (Debit and Credit).');
-      return;
-    }
-    setManualJELines(prev => prev.filter((_, i) => i !== index));
+  // Export Reports Handlers
+  const handleExportPnlPDF = () => {
+    exportProfitAndLossPDF(pnl, currentFiscalYear.name);
   };
 
-  const handleUpdateJELine = (index: number, field: string, value: any) => {
-    setManualJELines(prev => prev.map((line, i) => {
-      if (i !== index) return line;
-      return { ...line, [field]: value };
-    }));
+  const handleExportBalanceSheetPDF = () => {
+    exportBalanceSheetPDF(balanceSheet, currentFiscalYear.name);
   };
 
-  const handlePostManualJournalEntry = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const totalDr = manualJELines.filter(l => l.type === 'Dr').reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-    const totalCr = manualJELines.filter(l => l.type === 'Cr').reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-
-    if (Math.abs(totalDr - totalCr) > 0.01) {
-      alert(`Unbalanced Journal Entry! Total Debit (NPR ${totalDr.toLocaleString()}) must equal Total Credit (NPR ${totalCr.toLocaleString()}). Difference: NPR ${Math.abs(totalDr - totalCr).toLocaleString()}`);
-      return;
-    }
-
-    if (totalDr <= 0) {
-      alert('Total Debit and Credit must be greater than NPR 0.');
-      return;
-    }
-
-    const desc = manualJEDesc.trim() || `Manual Journal Entry Post (${manualJERef})`;
-
-    const formattedLines = manualJELines.map(line => {
-      const acc = accounts.find(a => a.code === line.accountCode) || accounts[0];
-      const isDr = line.type === 'Dr';
-      return {
-        accountId: acc.id,
-        accountCode: acc.code,
-        accountName: acc.name,
-        debit: isDr ? (Number(line.amount) || 0) : 0,
-        credit: !isDr ? (Number(line.amount) || 0) : 0
-      };
-    });
-
-    addJournalEntry({
-      date: manualJEDate,
-      description: desc,
-      reference: manualJERef.trim() || `JE-MAN-${Date.now().toString().slice(-4)}`,
-      createdBy: currentUser?.name || 'Admin User',
-      lines: formattedLines
-    });
-
-    // Sync & recalculate all accounting headings across financial statements
-    const syncRes = syncJournalEntriesAndAccounts();
-
-    setShowManualJournalModal(false);
-    setSyncNotification(`✓ Manual Journal Voucher #${manualJERef} posted! Automatically reflected across all financial accounting headings (${syncRes.accountsCount} Chart of Accounts updated).`);
-    setTimeout(() => setSyncNotification(null), 7000);
+  const handleExportCashFlowPDF = () => {
+    exportCashFlowPDF(cashFlow, currentFiscalYear.name);
   };
 
-  // Dynamic Payment Account Modal State
-  const [showAddAccountModal, setShowAddAccountModal] = useState(false);
-  const [newAccName, setNewAccName] = useState('');
-  const [newAccCode, setNewAccCode] = useState('');
-  const [newAccCategory, setNewAccCategory] = useState<'Assets' | 'Liabilities' | 'Equity' | 'Expenses' | 'Revenue'>('Assets');
-
-  const handleCreateNewPaymentAccount = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAccName.trim()) return;
-    const autoCode = newAccCode.trim() || String(1000 + Math.floor(Math.random() * 8999));
-    const created = addAccount({
-      code: autoCode,
-      name: newAccName.trim(),
-      category: newAccCategory,
-      type: newAccCategory === 'Assets' ? 'Bank' : 'Expenses'
-    });
-    setMethodCode(created.code);
-    setShowAddAccountModal(false);
-    setNewAccName('');
-    setNewAccCode('');
-  };
-
-  const handleSelectPartyFromCRM = (partyVal: string) => {
-    setPartyName(partyVal);
-    // Auto-detect supplier
-    const sup = suppliers.find(s => s.name.toLowerCase().trim() === partyVal.toLowerCase().trim());
-    if (sup) {
-      if (entryType === 'Payment') {
-        setTargetCode('2010'); // Accounts Payable (Suppliers)
-      }
-      const supPOs = purchases.filter(p => p.supplierId === sup.id || p.supplierName.toLowerCase().trim() === sup.name.toLowerCase().trim());
-      const poTotalCost = supPOs.reduce((sum, p) => sum + p.cost, 0);
-      const dueAmount = poTotalCost > 0 ? poTotalCost : sup.balanceDue;
-      if (dueAmount > 0) {
-        setAmountInput(String(dueAmount));
-      }
-    }
-  };
-
-  const handlePostPaymentReceivedEntry = (e: React.FormEvent) => {
-    e.preventDefault();
-    const numAmount = parseFloat(amountInput);
-    if (isNaN(numAmount) || numAmount <= 0) {
-      alert('Please enter a valid amount in NPR.');
-      return;
-    }
-
-    const methodAcc = accounts.find(a => a.code === methodCode) || accounts.find(a => a.code === '1010');
-    const targetAcc = accounts.find(a => a.code === targetCode) || accounts.find(a => a.code === '5040');
-
-    const vNum = voucherNo.trim() || `${entryType === 'Payment' ? 'PAY' : 'REC'}-${Date.now().toString().slice(-6)}`;
-    const party = partyName.trim() || (entryType === 'Payment' ? 'Payee Vendor / Supplier' : 'Payer Client');
-    const desc = entryDescription.trim() || `${entryType} Transaction (${party}): ${targetAcc?.name || 'Account'}`;
-
-    let lines = [];
-    if (entryType === 'Payment') {
-      // Payment Out: DEBIT Target Account (Expense/Liability/Asset), CREDIT Method Account (Cash/Bank)
-      lines = [
-        {
-          accountId: targetAcc?.id || 'acc-5040',
-          accountCode: targetAcc?.code || '5040',
-          accountName: targetAcc?.name || 'Operating Expense',
-          debit: numAmount,
-          credit: 0
-        },
-        {
-          accountId: methodAcc?.id || 'acc-1020',
-          accountCode: methodAcc?.code || '1020',
-          accountName: methodAcc?.name || 'Nabil Bank Operating Account',
-          debit: 0,
-          credit: numAmount
-        }
-      ];
-    } else {
-      // Received In: DEBIT Method Account (Cash/Bank), CREDIT Target Account (Revenue/Capital)
-      lines = [
-        {
-          accountId: methodAcc?.id || 'acc-1020',
-          accountCode: methodAcc?.code || '1020',
-          accountName: methodAcc?.name || 'Nabil Bank Operating Account',
-          debit: numAmount,
-          credit: 0
-        },
-        {
-          accountId: targetAcc?.id || 'acc-4010',
-          accountCode: targetAcc?.code || '4010',
-          accountName: targetAcc?.name || 'Watch Sales Revenue',
-          debit: 0,
-          credit: numAmount
-        }
-      ];
-    }
-
-    // Post Double-Entry Journal
-    addJournalEntry({
-      date: entryDate || new Date().toISOString().substring(0, 10),
-      description: `[${entryType.toUpperCase()} VOUCHER #${vNum}] Party: ${party}. ${desc}`,
-      reference: vNum,
-      createdBy: currentUser?.name || 'Staff Accountant',
-      lines
-    });
-
-    // Automatically recalculate and sync all account balances and statements
-    syncJournalEntriesAndAccounts();
-    const now = new Date().toLocaleTimeString();
-    setLastSyncTime(now);
-
-    // Reset Form
-    setShowPaymentModal(false);
-    setAmountInput('');
-    setPartyName('');
-    setVoucherNo('');
-    setEntryDescription('');
-
-    setSyncNotification(`✓ ${entryType} Transaction Voucher #${vNum} of NPR ${numAmount.toLocaleString()} recorded! Data automatically pulled & updated on P&L, Balance Sheet, Trial Balance, Chart of Accounts, and Reports.`);
-    setTimeout(() => setSyncNotification(null), 7000);
-  };
-
-  // Dynamically calculate balances by pulling data directly from Journal Entries
-  const getAccountBalanceFromJournals = (code: string, category: 'Assets' | 'Expenses' | 'Revenue' | 'Liabilities' | 'Equity') => {
-    let debitSum = 0;
-    let creditSum = 0;
-
-    journalEntries.forEach(je => {
-      je.lines.forEach(line => {
-        if (line.accountCode === code) {
-          debitSum += Number(line.debit || 0);
-          creditSum += Number(line.credit || 0);
-        }
-      });
-    });
-
-    if (category === 'Assets' || category === 'Expenses') {
-      return debitSum - creditSum;
-    } else {
-      return creditSum - debitSum;
-    }
-  };
-
-  // P&L Calculations pulled directly from Journal Entries, Master Accounts, & Real-time Transactions
-  const rawSalesRevenue = getAccountBalanceFromJournals('4010', 'Revenue') || accounts.find(a => a.code === '4010')?.balance || 0;
-  const liveSalesTotal = sales.reduce((sum, s) => sum + s.finalTotal, 0);
-  // Total Revenue incorporates journal entries and live sales
-  const salesRevenue = Math.max(rawSalesRevenue, liveSalesTotal);
-
-  const rawCogs = getAccountBalanceFromJournals('5010', 'Expenses') || accounts.find(a => a.code === '5010')?.balance || 0;
-  const liveSalesCOGS = sales.reduce((sum, s) => {
-    const prod = products.find(p => p.id === s.productId);
-    return sum + (prod ? prod.purchasePrice : Math.round(s.sellingPrice * 0.7));
-  }, 0);
-  const cogs = Math.max(rawCogs, liveSalesCOGS);
-  const grossProfit = salesRevenue - cogs;
-
-  // Operating Expenses - dynamically fetch ALL expense accounts except COGS (5010)
-  const expenseAccounts = accounts.filter(a => a.category === 'Expenses' && a.code !== '5010');
-  const operatingExpenseList = expenseAccounts.map(acc => {
-    const bal = getAccountBalanceFromJournals(acc.code, 'Expenses') || acc.balance || 0;
-    return {
-      code: acc.code,
-      name: acc.name,
-      amount: Math.abs(bal)
-    };
-  });
-
-  const courierExp = operatingExpenseList.find(e => e.code === '5020')?.amount || 0;
-  const discountExp = operatingExpenseList.find(e => e.code === '5030')?.amount || 0;
-  const marketingExp = operatingExpenseList.find(e => e.code === '5040')?.amount || 0;
-
-  const totalExpenses = operatingExpenseList.reduce((sum, item) => sum + item.amount, 0);
-  const netProfit = grossProfit - totalExpenses;
-
-  // Balance Sheet Calculations - dynamically pulled from ALL Chart of Accounts & Journal Entries
-  const assetAccountList = accounts
-    .filter(a => a.category === 'Assets')
-    .map(acc => {
-      const bal = getAccountBalanceFromJournals(acc.code, 'Assets') ?? acc.balance ?? 0;
-      return {
-        code: acc.code,
-        name: acc.name,
-        amount: bal
-      };
-    });
-  const totalAssets = assetAccountList.reduce((sum, item) => sum + item.amount, 0);
-
-  const liabilityAccountList = accounts
-    .filter(a => a.category === 'Liabilities')
-    .map(acc => {
-      const bal = getAccountBalanceFromJournals(acc.code, 'Liabilities') ?? acc.balance ?? 0;
-      return {
-        code: acc.code,
-        name: acc.name,
-        amount: bal
-      };
-    });
-  const totalLiabilities = liabilityAccountList.reduce((sum, item) => sum + item.amount, 0);
-
-  const equityAccountList = accounts
-    .filter(a => a.category === 'Equity')
-    .map(acc => {
-      const bal = getAccountBalanceFromJournals(acc.code, 'Equity') ?? acc.balance ?? 0;
-      return {
-        code: acc.code,
-        name: acc.name,
-        amount: bal
-      };
-    });
-  const totalBaseEquity = equityAccountList.reduce((sum, item) => sum + item.amount, 0);
-  const totalEquity = totalBaseEquity + netProfit;
-
-  const handleSyncData = () => {
-    const result = syncJournalEntriesAndAccounts();
-    const now = new Date().toLocaleTimeString();
-    setLastSyncTime(now);
-    setSyncNotification(`✓ Successfully pulled and synced data from ${result.entriesCount} Journal Entries across ${result.accountsCount} Chart of Accounts (${result.newEntriesCreated} journal entries processed). P&L and Balance Sheet updated!`);
-    setTimeout(() => {
-      setSyncNotification(null);
-    }, 6000);
-  };
-
-  const handleDownloadPnl = () => {
-    exportProfitAndLossReport(
-      salesRevenue,
-      cogs,
-      grossProfit,
-      operatingExpenseList,
-      totalExpenses,
-      netProfit
+  const handleExportTrialBalancePDF = () => {
+    exportTrialBalancePDF(
+      trialBalance.rows,
+      trialBalance.totalDebit,
+      trialBalance.totalCredit,
+      trialBalance.isBalanced,
+      currentFiscalYear.name
     );
-  };
-
-  const handleDownloadPnlPDF = () => {
-    exportProfitAndLossReportPDF(
-      salesRevenue,
-      cogs,
-      grossProfit,
-      operatingExpenseList,
-      totalExpenses,
-      netProfit
-    );
-  };
-
-  const handleDownloadBalanceSheet = () => {
-    exportBalanceSheetReport(
-      assetAccountList.map(a => ({ name: `[${a.code}] ${a.name}`, amount: a.amount })),
-      totalAssets,
-      liabilityAccountList.map(l => ({ name: `[${l.code}] ${l.name}`, amount: l.amount })),
-      totalLiabilities,
-      [
-        ...equityAccountList.map(e => ({ name: `[${e.code}] ${e.name}`, amount: e.amount })),
-        { name: 'Retained Earnings (Net Profit)', amount: netProfit }
-      ],
-      totalEquity
-    );
-  };
-
-  const handleDownloadBalanceSheetPDF = () => {
-    exportBalanceSheetReportPDF(
-      assetAccountList.map(a => ({ name: `[${a.code}] ${a.name}`, amount: a.amount })),
-      totalAssets,
-      liabilityAccountList.map(l => ({ name: `[${l.code}] ${l.name}`, amount: l.amount })),
-      totalLiabilities,
-      [
-        ...equityAccountList.map(e => ({ name: `[${e.code}] ${e.name}`, amount: e.amount })),
-        { name: 'Retained Earnings (Net Profit)', amount: netProfit }
-      ],
-      totalEquity
-    );
-  };
-
-  const handleDownloadTrialBalance = () => {
-    const headers = ['Account Code', 'Account Title', 'Category', 'Debit Balance (NPR)', 'Credit Balance (NPR)'];
-    const rows = accounts.map(acc => {
-      const isDebit = acc.category === 'Assets' || acc.category === 'Expenses';
-      const bal = getAccountBalanceFromJournals(acc.code, acc.category as any) || acc.balance;
-      return [
-        acc.code,
-        acc.name,
-        acc.category,
-        isDebit ? bal : 0,
-        !isDebit ? bal : 0
-      ];
-    });
-    exportToCSV('Trial_Balance_Report', headers, rows);
-  };
-
-  const handleDownloadTrialBalancePDF = () => {
-    exportTrialBalanceReportPDF(
-      accounts,
-      (code, cat) => getAccountBalanceFromJournals(code, cat)
-    );
-  };
-
-  const handleDownloadCOA = () => {
-    const headers = ['Account Code', 'Account Title', 'Category', 'Current Balance (NPR)'];
-    const rows = accounts.map(acc => [
-      acc.code,
-      acc.name,
-      acc.category,
-      getAccountBalanceFromJournals(acc.code, acc.category as any) || acc.balance
-    ]);
-    exportToCSV('Chart_of_Accounts_Master', headers, rows);
-  };
-
-  const handleDownloadCOAPDF = () => {
-    exportChartOfAccountsPDF(accounts);
   };
 
   return (
-    <div className="space-y-6 text-white">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-zinc-900/80 p-6 rounded-2xl border border-amber-500/30">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="font-serif text-2xl font-bold text-amber-100 flex items-center gap-2">
-              <Calculator className="w-6 h-6 text-amber-400" />
-              <span>Double-Entry Financial Accounting System</span>
-            </h2>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold flex items-center gap-1">
-              <ShieldCheck className="w-3 h-3 text-emerald-400" />
-              <span>Locked & Finalized Ledger</span>
-            </span>
-          </div>
-          <p className="text-xs text-zinc-400">
-            Real-time Chart of Accounts, Double-Entry Journal Postings, Trial Balance & Automated Financial Statements.
-          </p>
-        </div>
-
-        {/* Action Buttons: Sync, Record Payment, & Print */}
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => setShowPaymentModal(true)}
-            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-          >
-            <Plus className="w-4 h-4" />
-            <span>+ Record Payment / Received Entry</span>
-          </button>
-
-          <button
-            onClick={handleSyncData}
-            className="px-3.5 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            title="Pull and sync live transaction data directly from Journal Entries"
-          >
-            <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
-            <span>Pull Data from Journal Entries ({lastSyncTime})</span>
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-zinc-300 hover:text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print Report</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Sync / Transaction Notification Banner */}
-      {syncNotification && (
-        <div className="p-4 bg-emerald-950/80 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs font-medium flex items-center justify-between gap-2 shadow-lg animate-fade-in">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>{syncNotification}</span>
-          </div>
-          <button onClick={() => setSyncNotification(null)} className="text-emerald-400 hover:text-white font-bold cursor-pointer">✕</button>
+    <div id="accounting-and-finance-module" className="space-y-6">
+      {/* Toast Notification */}
+      {syncToast && (
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl text-emerald-300 text-sm flex items-center space-x-2 animate-in fade-in duration-200">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+          <span>{syncToast}</span>
         </div>
       )}
 
-      {/* Sub Navigation Tabs & Download Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-800">
-        <div className="flex flex-wrap items-center gap-1">
-          <button
-            onClick={() => setActiveTab('pnl')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'pnl' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Profit & Loss
-          </button>
-          <button
-            onClick={() => setActiveTab('balance')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'balance' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Balance Sheet
-          </button>
-          <button
-            onClick={() => setActiveTab('trial')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'trial' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Trial Balance
-          </button>
-          <button
-            onClick={() => setActiveTab('payments')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-              activeTab === 'payments' ? 'bg-amber-500 text-zinc-950' : 'text-amber-400 hover:text-amber-300'
-            }`}
-          >
-            <DollarSign className="w-3.5 h-3.5" />
-            <span>Payments & Receipts</span>
-          </button>
-          <button
-            onClick={() => setActiveTab('journal')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'journal' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Journal Entries ({journalEntries.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('coa')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'coa' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            Chart of Accounts
-          </button>
-        </div>
+      {/* Main Tabs Navigation Bar */}
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900/90 border border-slate-800 rounded-2xl backdrop-blur-md overflow-x-auto shadow-lg">
+        <button
+          onClick={() => setActiveTab('dashboard')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'dashboard'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <TrendingUp className="w-4 h-4" />
+          <span>Finance Cockpit</span>
+        </button>
 
-        {/* Tab-Specific PDF & CSV Export Controls */}
-        <div className="flex items-center gap-2">
-          {activeTab === 'pnl' && (
-            <>
-              <button
-                onClick={handleDownloadPnlPDF}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download P&L PDF</span>
-              </button>
-              <button
-                onClick={handleDownloadPnl}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV</span>
-              </button>
-            </>
-          )}
-          {activeTab === 'balance' && (
-            <>
-              <button
-                onClick={handleDownloadBalanceSheetPDF}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download Balance Sheet PDF</span>
-              </button>
-              <button
-                onClick={handleDownloadBalanceSheet}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV</span>
-              </button>
-            </>
-          )}
-          {activeTab === 'trial' && (
-            <>
-              <button
-                onClick={handleDownloadTrialBalancePDF}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download Trial Balance PDF</span>
-              </button>
-              <button
-                onClick={handleDownloadTrialBalance}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV</span>
-              </button>
-            </>
-          )}
-          {activeTab === 'payments' && (
-            <>
-              <button
-                onClick={() => exportPaymentsReportPDF(journalEntries)}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download Cashbook PDF</span>
-              </button>
-            </>
-          )}
-          {activeTab === 'journal' && (
-            <>
-              <button
-                onClick={() => exportJournalEntriesReportPDF(journalEntries)}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download Journal PDF</span>
-              </button>
-              <button
-                onClick={() => exportJournalEntriesReport(journalEntries)}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV</span>
-              </button>
-            </>
-          )}
-          {activeTab === 'coa' && (
-            <>
-              <button
-                onClick={handleDownloadCOAPDF}
-                className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download COA PDF</span>
-              </button>
-              <button
-                onClick={handleDownloadCOA}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-lg"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV</span>
-              </button>
-            </>
-          )}
-        </div>
+        <button
+          onClick={() => setActiveTab('pnl')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'pnl'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <DollarSign className="w-4 h-4" />
+          <span>Profit & Loss (P&L)</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('balance')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'balance'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Scale className="w-4 h-4" />
+          <span>Balance Sheet</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('cashflow')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'cashflow'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <PieChart className="w-4 h-4" />
+          <span>Cash Flow</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('trial')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'trial'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          <span>Trial Balance</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('ledger')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'ledger'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>General Ledger</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('vouchers')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'vouchers'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <FileText className="w-4 h-4" />
+          <span>Voucher Register</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('coa')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'coa'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <ListTree className="w-4 h-4" />
+          <span>Chart of Accounts</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('assets')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'assets'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>Fixed Assets</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+            activeTab === 'settings'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Fiscal Periods</span>
+        </button>
       </div>
 
-      {/* PROFIT & LOSS STATEMENT */}
+      {/* ========================================================================= */}
+      {/* 1. EXECUTIVE FINANCE DASHBOARD */}
+      {/* ========================================================================= */}
+      {activeTab === 'dashboard' && (
+        <ExecutiveDashboard
+          onOpenNewVoucher={() => handleOpenVoucher('Journal Voucher')}
+          onNavigateTab={(tab) => setActiveTab(tab)}
+          onSync={handleSyncLedger}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 2. PROFIT & LOSS STATEMENT (P&L) */}
+      {/* ========================================================================= */}
       {activeTab === 'pnl' && (
-        <div className="bg-zinc-900/90 rounded-2xl border border-amber-500/30 p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="border-b border-zinc-800 pb-4 text-center">
-            <h3 className="font-serif text-2xl font-bold text-amber-100 uppercase tracking-widest">
-              PREMIUM WATCH STORE NEPAL
-            </h3>
-            <p className="text-xs font-mono text-amber-400 uppercase font-bold mt-1">
-              PROFIT & LOSS STATEMENT (INCOME STATEMENT)
-            </p>
-            <p className="text-[11px] text-zinc-500 font-mono">Currency: Nepalese Rupee (NPR)</p>
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <DollarSign className="w-5 h-5 text-emerald-400" />
+                <span>Statement of Profit or Loss (Income Statement)</span>
+              </h2>
+              <p className="text-xs text-slate-400">Multi-step income statement derived from General Ledger transaction movements</p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleExportPnlPDF}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>Download PDF</span>
+              </button>
+              <button
+                onClick={() => {
+                  const rows = [
+                    { Particulars: 'Operating Revenue', Amount: pnl.revenue },
+                    { Particulars: 'Cost of Goods Sold (COGS)', Amount: -pnl.costOfGoodsSold },
+                    { Particulars: 'Gross Profit', Amount: pnl.grossProfit },
+                    ...pnl.operatingExpenses.map(e => ({ Particulars: `[${e.code}] ${e.name}`, Amount: -e.amount })),
+                    { Particulars: 'Total Operating Expenses', Amount: -pnl.totalOperatingExpenses },
+                    { Particulars: 'Net Profit / (Loss)', Amount: pnl.netProfit }
+                  ];
+                  exportToCSV(rows, `Profit_And_Loss_${new Date().toISOString().substring(0, 10)}`);
+                }}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Export CSV</span>
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-4 max-w-2xl mx-auto font-mono text-xs">
-            
-            {/* Revenue */}
-            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
-              <span className="text-amber-400 font-bold block uppercase border-b border-zinc-800 pb-1">1. Operating Revenue</span>
-              <div className="flex justify-between text-zinc-200">
-                <span>Watch Sales Revenue (Gross)</span>
-                <span className="font-bold text-emerald-400">NPR {salesRevenue.toLocaleString()}</span>
-              </div>
+          {/* Key Metrics Banner */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
+              <span className="text-xs text-slate-400 font-semibold">Total Revenue</span>
+              <p className="text-2xl font-bold font-mono text-white mt-1">NPR {pnl.revenue.toLocaleString()}</p>
+              <span className="text-xs text-emerald-400 mt-1 block">Sales & Watch Services</span>
             </div>
-
-            {/* COGS */}
-            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
-              <span className="text-amber-400 font-bold block uppercase border-b border-zinc-800 pb-1">2. Cost of Sales</span>
-              <div className="flex justify-between text-zinc-200">
-                <span>Cost of Goods Sold (COGS - Inventory)</span>
-                <span className="text-rose-400">- NPR {cogs.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between font-bold text-amber-300 pt-2 border-t border-zinc-800">
-                <span>Gross Operating Profit</span>
-                <span>NPR {grossProfit.toLocaleString()}</span>
-              </div>
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
+              <span className="text-xs text-slate-400 font-semibold">Gross Profit (Margin: {pnl.grossMarginPercentage}%)</span>
+              <p className="text-2xl font-bold font-mono text-amber-400 mt-1">NPR {pnl.grossProfit.toLocaleString()}</p>
+              <span className="text-xs text-slate-400 mt-1 block">After COGS: NPR {pnl.costOfGoodsSold.toLocaleString()}</span>
             </div>
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5">
+              <span className="text-xs text-slate-400 font-semibold">Net Income (Net Margin: {pnl.netMarginPercentage}%)</span>
+              <p className={`text-2xl font-bold font-mono mt-1 ${pnl.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                NPR {pnl.netProfit.toLocaleString()}
+              </p>
+              <span className="text-xs text-slate-400 mt-1 block">Carried to Balance Sheet Equity</span>
+            </div>
+          </div>
 
-            {/* Operating Expenses */}
-            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2">
-              <span className="text-amber-400 font-bold block uppercase border-b border-zinc-800 pb-1">3. Operating Expenses</span>
-              {operatingExpenseList.map((exp) => (
-                <div key={exp.code} className="flex justify-between text-zinc-300">
-                  <span>[{exp.code}] {exp.name}</span>
-                  <span>NPR {exp.amount.toLocaleString()}</span>
+          {/* Statement Table */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg p-6 space-y-6">
+            {/* Revenue Section */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3 pb-2 border-b border-slate-800">
+                1. Operating Revenue & Turnovers
+              </h3>
+              <div className="space-y-2 text-xs">
+                {pnl.revenueBreakdown.map((rev, idx) => (
+                  <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                    <span className="text-slate-300"><strong className="text-amber-400 font-mono">[{rev.code}]</strong> {rev.name}</span>
+                    <span className="font-mono font-semibold text-emerald-400">NPR {rev.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/60 font-bold rounded-lg text-white">
+                  <span>Total Operating Revenue:</span>
+                  <span className="font-mono text-emerald-400">NPR {pnl.revenue.toLocaleString()}</span>
                 </div>
-              ))}
-              <div className="flex justify-between font-bold text-rose-300 pt-2 border-t border-zinc-800">
-                <span>Total Operating Expenses</span>
-                <span>NPR {totalExpenses.toLocaleString()}</span>
               </div>
             </div>
 
-            {/* Net Profit */}
-            <div className="bg-gradient-to-r from-amber-950 via-zinc-900 to-amber-950 p-5 rounded-2xl border-2 border-amber-500/50 flex items-center justify-between font-serif text-lg">
-              <span className="font-bold text-amber-100">NET BOTTOM LINE PROFIT</span>
-              <span className={`font-mono font-bold ${netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                NPR {netProfit.toLocaleString()}
-              </span>
+            {/* Direct Cost / COGS Section */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-rose-400 mb-3 pb-2 border-b border-slate-800">
+                2. Direct Cost of Goods Sold (COGS)
+              </h3>
+              <div className="space-y-2 text-xs">
+                {pnl.cogsBreakdown.map((c, idx) => (
+                  <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                    <span className="text-slate-300"><strong className="text-amber-400 font-mono">[{c.code}]</strong> {c.name}</span>
+                    <span className="font-mono font-semibold text-rose-400">(NPR {c.amount.toLocaleString()})</span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/60 font-bold rounded-lg text-white">
+                  <span>Total Cost of Sales:</span>
+                  <span className="font-mono text-rose-400">(NPR {pnl.costOfGoodsSold.toLocaleString()})</span>
+                </div>
+              </div>
             </div>
 
+            {/* Gross Profit Callout */}
+            <div className="flex justify-between py-3 px-4 bg-amber-500/10 border border-amber-500/30 rounded-xl font-bold text-sm text-white">
+              <span className="text-amber-300">GROSS PROFIT:</span>
+              <span className="font-mono text-amber-400">NPR {pnl.grossProfit.toLocaleString()}</span>
+            </div>
+
+            {/* Operating Expenses Section */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 pb-2 border-b border-slate-800">
+                3. Operating & Administrative Overhead Expenses
+              </h3>
+              <div className="space-y-2 text-xs">
+                {pnl.operatingExpenses.map((exp, idx) => (
+                  <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                    <span className="text-slate-300"><strong className="text-amber-400 font-mono">[{exp.code}]</strong> {exp.name}</span>
+                    <span className="font-mono font-semibold text-rose-300">NPR {exp.amount.toLocaleString()}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/60 font-bold rounded-lg text-white">
+                  <span>Total Operating Expenses:</span>
+                  <span className="font-mono text-rose-300">NPR {pnl.totalOperatingExpenses.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Net Profit Final Bottom Line */}
+            <div className={`flex justify-between py-4 px-5 rounded-xl font-bold text-base border ${
+              pnl.netProfit >= 0
+                ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                : 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+            }`}>
+              <span className="uppercase tracking-wider">NET PROFIT / (LOSS) FOR THE PERIOD:</span>
+              <span className="font-mono text-lg font-extrabold">NPR {pnl.netProfit.toLocaleString()}</span>
+            </div>
           </div>
         </div>
       )}
 
-      {/* BALANCE SHEET */}
+      {/* ========================================================================= */}
+      {/* 3. BALANCE SHEET */}
+      {/* ========================================================================= */}
       {activeTab === 'balance' && (
-        <div className="bg-zinc-900/90 rounded-2xl border border-amber-500/30 p-6 sm:p-8 space-y-6 shadow-2xl">
-          <div className="border-b border-zinc-800 pb-4 text-center">
-            <h3 className="font-serif text-2xl font-bold text-amber-100 uppercase tracking-widest">
-              BALANCE SHEET STATEMENT
-            </h3>
-            <p className="text-xs font-mono text-amber-400 font-bold mt-1">
-              ASSETS = LIABILITIES + OWNER'S EQUITY
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 font-mono text-xs">
-            {/* ASSETS */}
-            <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 space-y-3">
-              <h4 className="text-amber-400 font-bold uppercase border-b border-zinc-800 pb-2 text-sm flex items-center justify-between">
-                <span>ASSETS (Current & Inventory)</span>
-                <span className="text-[10px] text-zinc-500 font-mono">({assetAccountList.length} Headings)</span>
-              </h4>
-              {assetAccountList.map(asset => (
-                <div key={asset.code} className="flex justify-between items-center text-zinc-200">
-                  <div className="flex items-center gap-2">
-                    <span className="text-zinc-500 font-mono text-[11px]">[{asset.code}]</span>
-                    <span className="font-sans font-semibold">{asset.name}</span>
-                  </div>
-                  <span className="font-bold text-emerald-400 font-mono">NPR {asset.amount.toLocaleString()}</span>
-                </div>
-              ))}
-              <div className="flex justify-between font-bold text-emerald-400 text-sm pt-3 border-t border-zinc-800">
-                <span>TOTAL ASSETS</span>
-                <span>NPR {totalAssets.toLocaleString()}</span>
-              </div>
-            </div>
-
-            {/* LIABILITIES & EQUITY */}
-            <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 space-y-3">
-              <h4 className="text-amber-400 font-bold uppercase border-b border-zinc-800 pb-2 text-sm flex items-center justify-between">
-                <span>LIABILITIES & OWNER EQUITY</span>
-                <span className="text-[10px] text-zinc-500 font-mono">({liabilityAccountList.length + equityAccountList.length} Headings)</span>
-              </h4>
-              
-              {/* Liabilities */}
-              <div className="space-y-2">
-                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">1. Liabilities</span>
-                {liabilityAccountList.map(liab => (
-                  <div key={liab.code} className="flex justify-between items-center text-zinc-300">
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-500 font-mono text-[11px]">[{liab.code}]</span>
-                      <span className="font-sans font-semibold">{liab.name}</span>
-                    </div>
-                    <span className="font-mono">NPR {liab.amount.toLocaleString()}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between text-zinc-400 font-bold pt-1 pb-2 border-b border-zinc-800/80 text-[11px]">
-                  <span>Total Liabilities</span>
-                  <span className="font-mono">NPR {totalLiabilities.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Equity */}
-              <div className="pt-2 space-y-2">
-                <span className="text-[10px] text-amber-400/90 font-bold uppercase tracking-wider block">2. Owner's Equity</span>
-                {equityAccountList.map(eq => (
-                  <div key={eq.code} className="flex justify-between items-center text-zinc-200">
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-500 font-mono text-[11px]">[{eq.code}]</span>
-                      <span className="font-sans font-semibold">{eq.name}</span>
-                    </div>
-                    <span className="font-mono">NPR {eq.amount.toLocaleString()}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center text-emerald-400 font-mono font-bold">
-                  <span className="font-sans">Retained Earnings (Net Profit)</span>
-                  <span>NPR {netProfit.toLocaleString()}</span>
-                </div>
-              </div>
-
-              <div className="flex justify-between font-bold text-amber-300 text-sm pt-3 border-t border-zinc-800">
-                <span>TOTAL LIABILITIES & EQUITY</span>
-                <span>NPR {(totalLiabilities + totalEquity).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TRIAL BALANCE */}
-      {activeTab === 'trial' && (
-        <div className="bg-zinc-900/90 rounded-2xl border border-zinc-800 p-6 space-y-4">
-          <h3 className="font-serif text-lg font-bold text-amber-200">
-            Trial Balance Sheet Verification
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono text-zinc-300">
-              <thead className="bg-zinc-950 text-amber-400 uppercase border-b border-zinc-800">
-                <tr>
-                  <th className="p-3">Code</th>
-                  <th className="p-3">Account Title</th>
-                  <th className="p-3">Category</th>
-                  <th className="p-3 text-right">Debit Balance</th>
-                  <th className="p-3 text-right">Credit Balance</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60">
-                {accounts.map(acc => {
-                  const isDebit = acc.category === 'Assets' || acc.category === 'Expenses';
-                  return (
-                    <tr key={acc.id} className="hover:bg-zinc-800/40">
-                      <td className="p-3 font-bold text-amber-300">{acc.code}</td>
-                      <td className="p-3 text-zinc-100 font-bold">{acc.name}</td>
-                      <td className="p-3 text-zinc-400">{acc.category}</td>
-                      <td className="p-3 text-right font-bold text-emerald-400">
-                        {isDebit ? `NPR ${acc.balance.toLocaleString()}` : '-'}
-                      </td>
-                      <td className="p-3 text-right font-bold text-amber-300">
-                        {!isDebit ? `NPR ${acc.balance.toLocaleString()}` : '-'}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* JOURNAL ENTRIES LIST */}
-      {activeTab === 'journal' && (
-        <div className="bg-zinc-900/90 rounded-2xl border border-zinc-800 p-6 space-y-6 shadow-2xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
             <div>
-              <h3 className="font-serif text-xl font-bold text-amber-100 flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-amber-400" />
-                <span>Double-Entry Journal Postings Ledger</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Audit log of all double-entry journal vouchers. Manual journal postings automatically update all financial statements and Chart of Accounts headings.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={handleOpenManualJournalModal}
-                className="px-4 py-2 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-zinc-950 font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-lg hover:scale-105"
-              >
-                <Plus className="w-4 h-4" />
-                <span>+ Post Manual Journal Entry</span>
-              </button>
-
-              <button
-                onClick={() => setShowAddAccountModal(true)}
-                className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>+ New Heading</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Filter & Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-950 p-3 rounded-xl border border-zinc-800">
-            <input
-              type="text"
-              placeholder="Search by Journal #, Ref, Account Heading, or Description..."
-              value={journalSearch}
-              onChange={(e) => setJournalSearch(e.target.value)}
-              className="w-full sm:w-80 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-amber-500 font-mono"
-            />
-
-            <div className="text-xs font-mono text-zinc-400 flex items-center gap-4">
-              <span>Total Vouchers: <strong className="text-amber-300">{journalEntries.length}</strong></span>
-              <button
-                onClick={handleSyncData}
-                className="text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <RefreshCw className="w-3 h-3" />
-                <span>Re-Sync Data</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Voucher List */}
-          <div className="space-y-4">
-            {journalEntries
-              .filter(je => {
-                if (!journalSearch) return true;
-                const q = journalSearch.toLowerCase();
-                return (
-                  je.entryNumber.toLowerCase().includes(q) ||
-                  (je.reference && je.reference.toLowerCase().includes(q)) ||
-                  je.description.toLowerCase().includes(q) ||
-                  je.lines.some(l => l.accountName.toLowerCase().includes(q) || l.accountCode.includes(q))
-                );
-              })
-              .map(je => {
-                const totalDr = je.lines.reduce((s, l) => s + (l.debit || 0), 0);
-
-                return (
-                  <div key={je.id} className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3 font-mono text-xs hover:border-amber-500/30 transition-all">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-amber-400 border-b border-zinc-800 pb-2">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-amber-300 text-sm">{je.entryNumber}</span>
-                        <span className="text-zinc-400 text-[11px]">{je.date}</span>
-                        {je.reference && (
-                          <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]">
-                            Ref: {je.reference}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-zinc-500 font-sans text-[11px]">
-                        Posted by: <strong className="text-zinc-300">{je.createdBy}</strong>
-                      </span>
-                    </div>
-
-                    <p className="text-zinc-200 font-sans text-xs">{je.description}</p>
-
-                    <div className="bg-zinc-900/60 rounded-lg p-3 space-y-2">
-                      {/* Dr Headings */}
-                      {je.lines.filter(l => l.debit > 0).map((line, idx) => (
-                        <div key={`dr-${idx}`} className="flex items-center justify-between text-zinc-200">
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-[10px] font-bold">
-                              Dr.
-                            </span>
-                            <span className="text-zinc-400 font-mono text-[11px]">[{line.accountCode}]</span>
-                            <span className="font-sans font-bold text-zinc-100">{line.accountName}</span>
-                          </div>
-                          <div className="text-emerald-400 font-bold font-mono text-xs">
-                            DR NPR {line.debit.toLocaleString()}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Cr Headings (Indented) */}
-                      {je.lines.filter(l => l.credit > 0).map((line, idx) => (
-                        <div key={`cr-${idx}`} className="flex items-center justify-between text-zinc-200 pl-6 border-t border-zinc-800/40 pt-1.5">
-                          <div className="flex items-center gap-2">
-                            <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[10px] font-bold">
-                              Cr.
-                            </span>
-                            <span className="text-zinc-400 font-mono text-[11px]">[{line.accountCode}]</span>
-                            <span className="font-sans font-bold text-zinc-100">{line.accountName}</span>
-                          </div>
-                          <div className="text-amber-300 font-bold font-mono text-xs">
-                            CR NPR {line.credit.toLocaleString()}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex justify-between items-center text-[10px] text-zinc-400 pt-1 border-t border-zinc-900">
-                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Balanced Double-Entry
-                      </span>
-                      <span>Total Debit/Credit: <strong className="text-zinc-200">NPR {totalDr.toLocaleString()}</strong></span>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
-      )}
-
-      {/* CHART OF ACCOUNTS */}
-      {activeTab === 'coa' && (
-        <div className="bg-zinc-900/90 rounded-2xl border border-zinc-800 p-6 space-y-6 shadow-2xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-            <div>
-              <h3 className="font-serif text-xl font-bold text-amber-100 flex items-center gap-2">
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
                 <Scale className="w-5 h-5 text-amber-400" />
-                <span>Master Chart of Accounts (COA)</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Financial account headings organized by Assets, Liabilities, Equity, Revenue, and Expenses.
-              </p>
+                <span>Statement of Financial Position (Balance Sheet)</span>
+              </h2>
+              <p className="text-xs text-slate-400">Equation check: Total Assets (A) = Total Liabilities (L) + Total Equity (E)</p>
             </div>
-            <button
-              onClick={() => setShowAddAccountModal(true)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-lg"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Add New Account Heading</span>
-            </button>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 font-mono text-xs">
-            {accounts.map(acc => (
-              <div key={acc.id} className="bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-2 hover:border-amber-500/40 transition-all">
-                <div className="flex justify-between font-bold text-amber-300">
-                  <span className="bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">[{acc.code}]</span>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    acc.category === 'Assets' ? 'bg-emerald-500/20 text-emerald-300' :
-                    acc.category === 'Liabilities' ? 'bg-rose-500/20 text-rose-300' :
-                    acc.category === 'Equity' ? 'bg-purple-500/20 text-purple-300' :
-                    acc.category === 'Revenue' ? 'bg-amber-500/20 text-amber-300' :
-                    'bg-blue-500/20 text-blue-300'
-                  }`}>
-                    {acc.category}
-                  </span>
-                </div>
-                <div className="font-bold text-zinc-100 text-sm font-sans">{acc.name}</div>
-                <div className="text-emerald-400 font-bold pt-1 border-t border-zinc-900 flex justify-between items-center">
-                  <span className="text-zinc-500 text-[10px]">Net Balance:</span>
-                  <span>NPR {acc.balance.toLocaleString()}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* PAYMENTS & RECEIVED LEDGER VIEW */}
-      {activeTab === 'payments' && (
-        <div className="bg-zinc-900/90 rounded-2xl border border-amber-500/30 p-6 space-y-6 shadow-2xl">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-            <div>
-              <h3 className="font-serif text-xl font-bold text-amber-100 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-amber-400" />
-                <span>Payment & Received Voucher Ledger</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Record of all incoming customer payments & outgoing expense/vendor disbursements automatically integrated into financial reports.
-              </p>
-            </div>
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-lg"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Record New Payment / Receipt</span>
-            </button>
-          </div>
-
-          {/* Quick Filter & Search */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-950 p-3 rounded-xl border border-zinc-800">
-            <input
-              type="text"
-              placeholder="Search by Voucher #, Party Name, or Description..."
-              value={paymentSearch}
-              onChange={(e) => setPaymentSearch(e.target.value)}
-              className="w-full sm:w-80 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-100 focus:outline-none focus:border-amber-500"
-            />
-            <div className="text-xs font-mono text-zinc-400 flex items-center gap-4">
-              <span>Total Entries: <strong className="text-amber-300">{journalEntries.length}</strong></span>
+            <div className="flex items-center space-x-2">
               <button
-                onClick={handleSyncData}
-                className="text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                onClick={handleExportBalanceSheetPDF}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
               >
-                <RefreshCw className="w-3 h-3" />
-                <span>Re-Sync Data</span>
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>Download PDF</span>
               </button>
             </div>
           </div>
 
-          {/* Table of Payments & Receipts */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono text-zinc-300">
-              <thead className="bg-zinc-950 text-amber-400 uppercase border-b border-zinc-800">
-                <tr>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Voucher / Ref #</th>
-                  <th className="p-3">Type</th>
-                  <th className="p-3">Party / Particulars</th>
-                  <th className="p-3">Account Lines</th>
-                  <th className="p-3 text-right">Amount (NPR)</th>
-                  <th className="p-3 text-right">Posted By</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-800/60">
-                {journalEntries
-                  .filter(je => {
-                    if (!paymentSearch) return true;
-                    const q = paymentSearch.toLowerCase();
-                    return (
-                      je.entryNumber.toLowerCase().includes(q) ||
-                      (je.reference && je.reference.toLowerCase().includes(q)) ||
-                      je.description.toLowerCase().includes(q)
-                    );
-                  })
-                  .map(je => {
-                    const isPayment = je.description.toUpperCase().includes('PAYMENT') || je.reference?.startsWith('PAY') || je.lines.some(l => l.credit > 0 && ['1010', '1020', '1030'].includes(l.accountCode));
-                    const totalAmt = je.lines.reduce((sum, l) => sum + Math.max(l.debit, l.credit), 0) / 2 || je.lines[0]?.debit || je.lines[0]?.credit || 0;
-
-                    return (
-                      <tr key={je.id} className="hover:bg-zinc-800/40 transition-colors">
-                        <td className="p-3 text-zinc-400">{je.date}</td>
-                        <td className="p-3 font-bold text-amber-300">{je.reference || je.entryNumber}</td>
-                        <td className="p-3">
-                          {isPayment ? (
-                            <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold">
-                              PAYMENT (Out)
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
-                              RECEIVED (In)
-                            </span>
-                          )}
-                        </td>
-                        <td className="p-3 text-zinc-100 font-sans font-semibold max-w-xs truncate">
-                          {je.description}
-                        </td>
-                        <td className="p-3 text-zinc-400">
-                          {je.lines.map(l => `${l.accountName} (${l.debit > 0 ? 'Dr' : 'Cr'})`).join(', ')}
-                        </td>
-                        <td className={`p-3 text-right font-bold text-sm ${isPayment ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          {isPayment ? '-' : '+'} NPR {totalAmt.toLocaleString()}
-                        </td>
-                        <td className="p-3 text-right text-zinc-400">{je.createdBy}</td>
-                      </tr>
-                    );
-                  })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* RECORD PAYMENT / RECEIVED ENTRY MODAL */}
-      {showPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-lg w-full space-y-6 shadow-2xl relative text-white max-h-[90vh] overflow-y-auto">
-            <button
-              onClick={() => setShowPaymentModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-
-            <div>
-              <h3 className="font-serif text-xl font-bold text-amber-200 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-amber-400" />
-                <span>Record Payment / Received Transaction</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-1">
-                Posts a double-entry journal entry and automatically recalculates P&L, Balance Sheet, and Trial Balance reports.
-              </p>
-            </div>
-
-            <form onSubmit={handlePostPaymentReceivedEntry} className="space-y-4 text-xs">
-              
-              {/* Type Switcher */}
-              <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-950 rounded-xl border border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEntryType('Payment');
-                    setTargetCode('5040');
-                  }}
-                  className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                    entryType === 'Payment' ? 'bg-rose-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  Payment Out (Expense/Vendor)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEntryType('Received');
-                    setTargetCode('4010');
-                  }}
-                  className={`py-2 text-xs font-bold rounded-lg transition-all ${
-                    entryType === 'Received' ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-400 hover:text-white'
-                  }`}
-                >
-                  Received In (Customer/Income)
-                </button>
-              </div>
-
-              {/* Dynamic Payment / Receipt Method Account (Paid From / Received Into) */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-zinc-300 font-bold block">
-                    {entryType === 'Payment' ? 'Paid From Account (Credit)' : 'Received Into Account (Debit)'}
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowAddAccountModal(true)}
-                    className="text-[11px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3 h-3" />
-                    <span>+ Add Payment Account</span>
-                  </button>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <select
-                    value={methodCode}
-                    onChange={(e) => setMethodCode(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono focus:border-amber-500 focus:outline-none"
-                  >
-                    <optgroup label="Liquid Payment Accounts (Cash / Bank / Wallets)">
-                      {accounts
-                        .filter(a => a.category === 'Assets')
-                        .map(acc => (
-                          <option key={acc.id} value={acc.code}>
-                            [{acc.code}] {acc.name} (NPR {acc.balance.toLocaleString()})
-                          </option>
-                        ))}
-                    </optgroup>
-                  </select>
-
-                  {/* Remove Account Button for custom accounts */}
-                  {accounts.some(a => a.code === methodCode && !['1010', '1020', '1030', '1200'].includes(a.code)) && (
-                    <button
-                      type="button"
-                      title="Remove this account"
-                      onClick={() => {
-                        const target = accounts.find(a => a.code === methodCode);
-                        if (target && confirm(`Delete payment account [${target.code}] ${target.name}?`)) {
-                          deleteAccount(target.id);
-                          setMethodCode('1020');
-                        }
-                      }}
-                      className="p-3 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-xl border border-rose-500/30 cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Category / Target Account (Pulled from BALANCE SHEET & PROFIT AND LOSS STATEMENT) */}
-              <div className="space-y-1">
-                <label className="text-zinc-300 font-bold block">
-                  {entryType === 'Payment' ? 'Expense / Liability Account (Debit)' : 'Revenue / Category Account (Credit)'}
-                </label>
-                <select
-                  value={targetCode}
-                  onChange={(e) => setTargetCode(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono focus:border-amber-500 focus:outline-none"
-                >
-                  <optgroup label="BALANCE SHEET STATEMENT - Liabilities & Equity">
-                    {accounts
-                      .filter(a => a.category === 'Liabilities' || a.category === 'Equity')
-                      .map(acc => (
-                        <option key={acc.id} value={acc.code}>
-                          [{acc.code}] {acc.name} ({acc.category}) - NPR {acc.balance.toLocaleString()}
-                        </option>
-                      ))}
-                  </optgroup>
-
-                  <optgroup label="PROFIT & LOSS STATEMENT - Operating Expenses">
-                    {accounts
-                      .filter(a => a.category === 'Expenses')
-                      .map(acc => (
-                        <option key={acc.id} value={acc.code}>
-                          [{acc.code}] {acc.name} ({acc.category}) - NPR {acc.balance.toLocaleString()}
-                        </option>
-                      ))}
-                  </optgroup>
-
-                  <optgroup label="BALANCE SHEET STATEMENT - Assets">
-                    {accounts
-                      .filter(a => a.category === 'Assets')
-                      .map(acc => (
-                        <option key={acc.id} value={acc.code}>
-                          [{acc.code}] {acc.name} ({acc.category}) - NPR {acc.balance.toLocaleString()}
-                        </option>
-                      ))}
-                  </optgroup>
-
-                  <optgroup label="PROFIT & LOSS STATEMENT - Operating Revenue">
-                    {accounts
-                      .filter(a => a.category === 'Revenue')
-                      .map(acc => (
-                        <option key={acc.id} value={acc.code}>
-                          [{acc.code}] {acc.name} ({acc.category}) - NPR {acc.balance.toLocaleString()}
-                        </option>
-                      ))}
-                  </optgroup>
-                </select>
-                <p className="text-[10px] text-zinc-500 font-mono">
-                  Pulled directly from Balance Sheet Statement and Profit & Loss Statement accounts ledger.
+          {/* Equation Status Bar */}
+          <div className={`p-4 rounded-xl border flex items-center justify-between ${
+            balanceSheet.isBalanced
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+          }`}>
+            <div className="flex items-center space-x-3">
+              {balanceSheet.isBalanced ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertTriangle className="w-5 h-5 text-rose-400" />}
+              <div>
+                <p className="font-semibold text-sm">
+                  {balanceSheet.isBalanced ? 'Fundamental Accounting Equation Holds (A = L + E)' : 'Balance Sheet Discrepancy'}
+                </p>
+                <p className="text-xs opacity-80">
+                  Total Assets: NPR {balanceSheet.totalAssets.toLocaleString()} | Liabilities + Equity: NPR {(balanceSheet.totalLiabilities + balanceSheet.totalEquity).toLocaleString()}
                 </p>
               </div>
-
-              {/* Payee / Vendor / Party Name (Pulled from Customer CRM & Supplier Ledgers) */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-zinc-300 font-bold block">
-                    {entryType === 'Payment' ? 'Payee / Vendor / Party Name' : 'Payer / Client Name'}
-                  </label>
-                  <span className="text-[10px] text-amber-400 font-mono">
-                    Pulled from Customer CRM & Suppliers
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  <input
-                    type="text"
-                    list="crm-parties-list"
-                    placeholder={entryType === 'Payment' ? "Select or type Supplier / Vendor Name (e.g., Gongabu Watch Store)" : "Select or type Customer / Client Name (e.g., Sujan Karki)"}
-                    value={partyName}
-                    onChange={(e) => handleSelectPartyFromCRM(e.target.value)}
-                    required
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 focus:border-amber-500 focus:outline-none"
-                  />
-                  <datalist id="crm-parties-list">
-                    {suppliers.map(s => {
-                      const supPOs = purchases.filter(p => p.supplierId === s.id || p.supplierName.toLowerCase().trim() === s.name.toLowerCase().trim());
-                      const poTotalCost = supPOs.reduce((sum, p) => sum + p.cost, 0);
-                      const apDue = poTotalCost > 0 ? poTotalCost : s.balanceDue;
-                      return (
-                        <option key={`sup-${s.id}`} value={s.name}>
-                          Supplier Ledger • AP Due: NPR {apDue.toLocaleString()} ({s.mobile})
-                        </option>
-                      );
-                    })}
-                    {customers.map(c => (
-                      <option key={`cust-${c.id}`} value={c.name}>
-                        Customer CRM • Purchases: NPR {c.totalPurchases.toLocaleString()} ({c.mobile})
-                      </option>
-                    ))}
-                  </datalist>
-
-                  {/* Quick Party Picker Pills */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    <span className="text-[10px] text-zinc-500 block w-full">Quick Pick from Ledgers:</span>
-                    {suppliers.map(s => {
-                      const supPOs = purchases.filter(p => p.supplierId === s.id || p.supplierName.toLowerCase().trim() === s.name.toLowerCase().trim());
-                      const poTotalCost = supPOs.reduce((sum, p) => sum + p.cost, 0);
-                      const apDue = poTotalCost > 0 ? poTotalCost : s.balanceDue;
-                      return (
-                        <button
-                          key={`btn-sup-${s.id}`}
-                          type="button"
-                          onClick={() => handleSelectPartyFromCRM(s.name)}
-                          className="px-2 py-1 rounded bg-zinc-800 hover:bg-amber-500 hover:text-zinc-950 text-zinc-300 text-[10px] font-bold border border-zinc-700 transition-all flex items-center gap-1 cursor-pointer"
-                        >
-                          <Building2 className="w-3 h-3 text-amber-400" />
-                          <span>{s.name} (Due: NPR {apDue.toLocaleString()})</span>
-                        </button>
-                      );
-                    })}
-                    {customers.slice(0, 3).map(c => (
-                      <button
-                        key={`btn-cust-${c.id}`}
-                        type="button"
-                        onClick={() => handleSelectPartyFromCRM(c.name)}
-                        className="px-2 py-1 rounded bg-zinc-800 hover:bg-emerald-500 hover:text-zinc-950 text-zinc-300 text-[10px] font-bold border border-zinc-700 transition-all flex items-center gap-1 cursor-pointer"
-                      >
-                        <UserCheck className="w-3 h-3 text-emerald-400" />
-                        <span>{c.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Amount & Voucher No */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-zinc-300 font-bold block">Amount (NPR)</label>
-                  <input
-                    type="number"
-                    placeholder="e.g., 25000"
-                    value={amountInput}
-                    onChange={(e) => setAmountInput(e.target.value)}
-                    required
-                    min="1"
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-amber-300 font-bold text-sm focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-zinc-300 font-bold block">Voucher / Ref #</label>
-                  <input
-                    type="text"
-                    placeholder={`Auto e.g. ${entryType === 'Payment' ? 'PAY-0091' : 'REC-0042'}`}
-                    value={voucherNo}
-                    onChange={(e) => setVoucherNo(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Date & Description */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-zinc-300 font-bold block">Transaction Date</label>
-                  <input
-                    type="date"
-                    value={entryDate}
-                    onChange={(e) => setEntryDate(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-zinc-300 font-bold block">Remarks / Description</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Paid via Nabil online banking"
-                    value={entryDescription}
-                    onChange={(e) => setEntryDescription(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setShowPaymentModal(false)}
-                  className="px-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold cursor-pointer shadow-lg flex items-center gap-2"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Post & Auto-Sync Financials</span>
-                </button>
-              </div>
-
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* MANUAL GENERAL JOURNAL POSTING MODAL */}
-      {showManualJournalModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in">
-          <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl p-6 sm:p-8 max-w-3xl w-full space-y-6 shadow-2xl relative text-white max-h-[92vh] overflow-y-auto">
-            <button
-              onClick={() => setShowManualJournalModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white font-bold cursor-pointer text-lg"
-            >
-              ✕
-            </button>
-
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[10px] font-mono font-bold border border-amber-500/30">
-                  Double-Entry Journal Post
-                </span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold border border-emerald-500/30">
-                  Auto-Syncs All Statements
-                </span>
-              </div>
-              <h3 className="font-serif text-2xl font-bold text-amber-200 flex items-center gap-2">
-                <BookOpen className="w-6 h-6 text-amber-400" />
-                <span>Post Manual Journal Voucher</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-1">
-                Select Dr & Cr account headings directly from Chart of Accounts. Manual posts automatically reflect on P&L, Balance Sheet, Trial Balance, and Chart of Accounts.
-              </p>
             </div>
+          </div>
 
-            <form onSubmit={handlePostManualJournalEntry} className="space-y-5 text-xs">
-              
-              {/* Header Info: Date & Voucher Ref */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-zinc-950 p-4 rounded-xl border border-zinc-800">
-                <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Journal Posting Date *</label>
-                  <input
-                    type="date"
-                    value={manualJEDate}
-                    onChange={(e) => setManualJEDate(e.target.value)}
-                    required
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-zinc-100 font-mono focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Voucher / Reference No. *</label>
-                  <input
-                    type="text"
-                    value={manualJERef}
-                    onChange={(e) => setManualJERef(e.target.value)}
-                    placeholder="e.g., JE-MAN-1001"
-                    required
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-2.5 text-amber-300 font-mono focus:border-amber-500 focus:outline-none font-bold"
-                  />
-                </div>
-              </div>
+          {/* Two Column Layout (Assets vs Liabilities & Equity) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* ASSETS COLUMN */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-400 pb-2 border-b border-slate-800">
+                Assets
+              </h3>
 
-              {/* Voucher Description / Narration */}
+              {/* Current Assets */}
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">General Voucher Narration / Description *</label>
-                <input
-                  type="text"
-                  value={manualJEDesc}
-                  onChange={(e) => setManualJEDesc(e.target.value)}
-                  placeholder="e.g., Monthly office store rent & security deposit adjustment"
-                  required
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Debit & Credit Lines Table */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-amber-300 text-sm">Journal Postings (Dr / Cr Headings)</h4>
-                    <span className="text-[10px] text-zinc-400 font-mono">({manualJELines.length} lines)</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleAddJELine('Dr')}
-                      className="text-[11px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 font-bold px-2.5 py-1 rounded-lg border border-emerald-500/30 flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Add Dr Heading</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleAddJELine('Cr')}
-                      className="text-[11px] bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-amber-500/30 flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ Add Cr Heading</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setShowAddAccountModal(true)}
-                      className="text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold px-2.5 py-1 rounded-lg border border-zinc-700 flex items-center gap-1 cursor-pointer transition-colors"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>+ New Heading</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2.5">
-                  {manualJELines.map((line, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-3 rounded-xl border space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-3 transition-all ${
-                        line.type === 'Dr'
-                          ? 'bg-emerald-950/20 border-emerald-500/30'
-                          : 'bg-amber-950/20 border-amber-500/30'
-                      }`}
-                    >
-                      {/* Dr / Cr Selector */}
-                      <div className="w-24 flex-shrink-0">
-                        <label className="text-[10px] text-zinc-400 block mb-0.5 font-bold">Entry Type</label>
-                        <select
-                          value={line.type}
-                          onChange={(e) => handleUpdateJELine(idx, 'type', e.target.value as 'Dr' | 'Cr')}
-                          className={`w-full rounded-lg p-2 font-mono text-xs font-bold focus:outline-none ${
-                            line.type === 'Dr'
-                              ? 'bg-emerald-900/80 text-emerald-200 border border-emerald-500/50'
-                              : 'bg-amber-900/80 text-amber-200 border border-amber-500/50'
-                          }`}
-                        >
-                          <option value="Dr">Dr (Debit)</option>
-                          <option value="Cr">Cr (Credit)</option>
-                        </select>
-                      </div>
-
-                      {/* Account Heading Selector (Pulled from COA) */}
-                      <div className="flex-1">
-                        <label className="text-[10px] text-zinc-300 block mb-0.5 font-bold">
-                          Account Heading ({line.type === 'Dr' ? 'Debit Dr' : 'Credit Cr'})
-                        </label>
-                        <select
-                          value={line.accountCode}
-                          onChange={(e) => handleUpdateJELine(idx, 'accountCode', e.target.value)}
-                          className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-100 font-mono text-xs focus:border-amber-500 focus:outline-none"
-                        >
-                          <optgroup label="ASSETS (1000s)">
-                            {accounts.filter(a => a.category === 'Assets').map(acc => (
-                              <option key={acc.id} value={acc.code}>
-                                [{acc.code}] {acc.name} (Assets)
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="LIABILITIES (2000s)">
-                            {accounts.filter(a => a.category === 'Liabilities').map(acc => (
-                              <option key={acc.id} value={acc.code}>
-                                [{acc.code}] {acc.name} (Liabilities)
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="EQUITY (3000s)">
-                            {accounts.filter(a => a.category === 'Equity').map(acc => (
-                              <option key={acc.id} value={acc.code}>
-                                [{acc.code}] {acc.name} (Equity)
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="REVENUE (4000s)">
-                            {accounts.filter(a => a.category === 'Revenue').map(acc => (
-                              <option key={acc.id} value={acc.code}>
-                                [{acc.code}] {acc.name} (Revenue)
-                              </option>
-                            ))}
-                          </optgroup>
-                          <optgroup label="EXPENSES (5000s)">
-                            {accounts.filter(a => a.category === 'Expenses').map(acc => (
-                              <option key={acc.id} value={acc.code}>
-                                [{acc.code}] {acc.name} (Expenses)
-                              </option>
-                            ))}
-                          </optgroup>
-                        </select>
-                      </div>
-
-                      {/* Amount Input (DR Amount or CR Amount) */}
-                      <div className="w-full sm:w-36">
-                        <label className={`text-[10px] block mb-0.5 font-bold ${
-                          line.type === 'Dr' ? 'text-emerald-400' : 'text-amber-300'
-                        }`}>
-                          {line.type === 'Dr' ? 'DR Amount (NPR)' : 'CR Amount (NPR)'}
-                        </label>
-                        <input
-                          type="number"
-                          min="0"
-                          step="any"
-                          placeholder="0"
-                          value={line.amount || ''}
-                          onChange={(e) => handleUpdateJELine(idx, 'amount', parseFloat(e.target.value) || 0)}
-                          className={`w-full bg-zinc-900 rounded-lg p-2 font-mono text-xs font-bold focus:outline-none ${
-                            line.type === 'Dr'
-                              ? 'border border-emerald-500/40 text-emerald-300 focus:border-emerald-500'
-                              : 'border border-amber-500/40 text-amber-300 focus:border-amber-500'
-                          }`}
-                        />
-                      </div>
-
-                      {/* Remove Line button */}
-                      <div className="flex justify-end pt-1 sm:pt-4">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveJELine(idx)}
-                          className="p-2 bg-rose-500/20 hover:bg-rose-600 text-rose-300 hover:text-white rounded-lg transition-colors cursor-pointer"
-                          title="Remove Heading Line"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
+                <h4 className="text-xs font-semibold text-slate-400 mb-2">Current Assets</h4>
+                <div className="space-y-1.5 text-xs">
+                  {balanceSheet.currentAssets.map((a, idx) => (
+                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                      <span className="text-slate-300">{a.name}</span>
+                      <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
                     </div>
                   ))}
+                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
+                    <span>Subtotal Current Assets:</span>
+                    <span className="font-mono text-cyan-400">
+                      NPR {balanceSheet.currentAssets.reduce((s, a) => s + a.amount, 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Total Double Entry Verification Banner */}
-              {(() => {
-                const totalDr = manualJELines.filter(l => l.type === 'Dr').reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-                const totalCr = manualJELines.filter(l => l.type === 'Cr').reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-                const diff = Math.abs(totalDr - totalCr);
-                const isBalanced = diff < 0.01 && totalDr > 0;
-
-                return (
-                  <div className={`p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono ${
-                    isBalanced ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300' : 'bg-rose-950/40 border-rose-500/40 text-rose-300'
-                  }`}>
-                    <div>
-                      <div className="font-bold flex items-center gap-2 text-sm">
-                        {isBalanced ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                            <span>✓ Balanced Double Entry Voucher</span>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="w-4 h-4 text-rose-400" />
-                            <span>⚠️ Unbalanced Voucher (Diff: NPR {diff.toLocaleString()})</span>
-                          </>
-                        )}
-                      </div>
-                      <div className="text-[11px] opacity-80 mt-0.5">
-                        {isBalanced ? 'Total Debit equals Total Credit. Ready to post.' : 'Total Debit must equal Total Credit before posting.'}
-                      </div>
+              {/* Fixed & Non-Current Assets */}
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 mb-2">Fixed & Non-Current Assets</h4>
+                <div className="space-y-1.5 text-xs">
+                  {balanceSheet.fixedAssets.map((a, idx) => (
+                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                      <span className="text-slate-300">{a.name}</span>
+                      <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
                     </div>
-
-                    <div className="flex items-center gap-4 text-xs font-bold self-end sm:self-auto">
-                      <div>Total Dr: <span className="text-emerald-400">NPR {totalDr.toLocaleString()}</span></div>
-                      <div>Total Cr: <span className="text-amber-300">NPR {totalCr.toLocaleString()}</span></div>
-                    </div>
+                  ))}
+                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
+                    <span>Subtotal Fixed Assets:</span>
+                    <span className="font-mono text-cyan-400">
+                      NPR {balanceSheet.fixedAssets.reduce((s, a) => s + a.amount, 0).toLocaleString()}
+                    </span>
                   </div>
-                );
-              })()}
-
-              {/* Modal Action Controls */}
-              <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setShowManualJournalModal(false)}
-                  className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={(() => {
-                    const totalDr = manualJELines.filter(l => l.type === 'Dr').reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-                    const totalCr = manualJELines.filter(l => l.type === 'Cr').reduce((sum, l) => sum + (Number(l.amount) || 0), 0);
-                    return Math.abs(totalDr - totalCr) > 0.01 || totalDr <= 0;
-                  })()}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-bold shadow-lg hover:scale-105 transition-all cursor-pointer flex items-center gap-2"
-                >
-                  <BookOpen className="w-4 h-4" />
-                  <span>Post Journal Voucher</span>
-                </button>
+                </div>
               </div>
 
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* DYNAMIC ADD PAYMENT ACCOUNT MODAL */}
-      {showAddAccountModal && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-zinc-900 border border-amber-500/40 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl relative text-white">
-            <button
-              onClick={() => setShowAddAccountModal(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white font-bold cursor-pointer"
-            >
-              ✕
-            </button>
-
-            <div>
-              <h3 className="font-serif text-lg font-bold text-amber-200 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-amber-400" />
-                <span>Add New Account Heading (COA)</span>
-              </h3>
-              <p className="text-xs text-zinc-400 mt-1">
-                Create a new account heading. It will immediately appear across Chart of Accounts and Journal Entry Dr/Cr selectors.
-              </p>
+              {/* Total Assets Footing */}
+              <div className="flex justify-between py-3 px-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl font-bold text-sm text-white mt-4">
+                <span className="text-cyan-300 uppercase">TOTAL ASSETS (A):</span>
+                <span className="font-mono text-cyan-400">NPR {balanceSheet.totalAssets.toLocaleString()}</span>
+              </div>
             </div>
 
-            <form onSubmit={handleCreateNewPaymentAccount} className="space-y-3 text-xs">
+            {/* LIABILITIES & EQUITY COLUMN */}
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400 pb-2 border-b border-slate-800">
+                Liabilities & Owner's Equity
+              </h3>
+
+              {/* Current Liabilities */}
               <div>
-                <label className="text-zinc-300 font-bold block mb-1">Account Title / Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Electricity Expense or Global IME Bank Account"
-                  value={newAccName}
-                  onChange={(e) => setNewAccName(e.target.value)}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:border-amber-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Account Code (Optional)</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 5050"
-                    value={newAccCode}
-                    onChange={(e) => setNewAccCode(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-100 font-mono focus:border-amber-500 focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="text-zinc-300 font-bold block mb-1">Account Category</label>
-                  <select
-                    value={newAccCategory}
-                    onChange={(e) => setNewAccCategory(e.target.value as any)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-2.5 text-zinc-100 focus:border-amber-500 focus:outline-none"
-                  >
-                    <option value="Assets">Assets (Bank / Cash / Inventory)</option>
-                    <option value="Liabilities">Liabilities (Payables / Loans)</option>
-                    <option value="Equity">Equity (Capital / Reserves)</option>
-                    <option value="Revenue">Revenue (Sales / Income)</option>
-                    <option value="Expenses">Expenses (Operating / Rent)</option>
-                  </select>
+                <h4 className="text-xs font-semibold text-slate-400 mb-2">Current Liabilities</h4>
+                <div className="space-y-1.5 text-xs">
+                  {balanceSheet.currentLiabilities.map((l, idx) => (
+                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                      <span className="text-slate-300">{l.name}</span>
+                      <span className="font-mono font-semibold text-white">NPR {l.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
+                    <span>Subtotal Current Liabilities:</span>
+                    <span className="font-mono text-rose-400">
+                      NPR {balanceSheet.currentLiabilities.reduce((s, l) => s + l.amount, 0).toLocaleString()}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-zinc-800">
-                <button
-                  type="button"
-                  onClick={() => setShowAddAccountModal(false)}
-                  className="px-4 py-2 bg-zinc-950 border border-zinc-800 text-zinc-400 rounded-xl font-bold cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold rounded-xl cursor-pointer shadow-lg"
-                >
-                  Save & Add Heading
-                </button>
+              {/* Long Term Liabilities */}
+              {balanceSheet.longTermLiabilities.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-400 mb-2">Long-term Liabilities</h4>
+                  <div className="space-y-1.5 text-xs">
+                    {balanceSheet.longTermLiabilities.map((l, idx) => (
+                      <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                        <span className="text-slate-300">{l.name}</span>
+                        <span className="font-mono font-semibold text-white">NPR {l.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Equity Section */}
+              <div>
+                <h4 className="text-xs font-semibold text-slate-400 mb-2">Owner's Equity & Retained Earnings</h4>
+                <div className="space-y-1.5 text-xs">
+                  {balanceSheet.equity.map((e, idx) => (
+                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                      <span className="text-slate-300">{e.name}</span>
+                      <span className="font-mono font-semibold text-amber-300">NPR {e.amount.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
+                    <span>Total Equity:</span>
+                    <span className="font-mono text-amber-400">
+                      NPR {balanceSheet.totalEquity.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </form>
+
+              {/* Total Liabilities & Equity Footing */}
+              <div className="flex justify-between py-3 px-4 bg-amber-500/10 border border-amber-500/30 rounded-xl font-bold text-sm text-white mt-4">
+                <span className="text-amber-300 uppercase">TOTAL LIABILITIES & EQUITY (L + E):</span>
+                <span className="font-mono text-amber-400">
+                  NPR {(balanceSheet.totalLiabilities + balanceSheet.totalEquity).toLocaleString()}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* 4. STATEMENT OF CASH FLOWS */}
+      {/* ========================================================================= */}
+      {activeTab === 'cashflow' && (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <PieChart className="w-5 h-5 text-cyan-400" />
+                <span>Statement of Cash Flows (Operating, Investing & Financing)</span>
+              </h2>
+              <p className="text-xs text-slate-400">Reconciliation of liquid cash and bank reserves movement across fiscal cycles</p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleExportCashFlowPDF}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>Download PDF</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 space-y-6 shadow-lg">
+            {/* Operating Activities */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-3 pb-2 border-b border-slate-800">
+                1. Cash Flows from Operating Activities
+              </h3>
+              <div className="space-y-2 text-xs">
+                {cashFlow.operatingActivities.map((act, i) => (
+                  <div key={i} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                    <span className="text-slate-300">{act.particulars}</span>
+                    <span className={`font-mono font-semibold ${act.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      NPR {act.amount.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/60 font-bold rounded-lg text-white">
+                  <span>Net Cash from Operating Activities:</span>
+                  <span className={`font-mono ${cashFlow.netCashFromOperations >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    NPR {cashFlow.netCashFromOperations.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Investing Activities */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-3 pb-2 border-b border-slate-800">
+                2. Cash Flows from Investing Activities (CapEx & Asset Purchase)
+              </h3>
+              <div className="space-y-2 text-xs">
+                {cashFlow.investingActivities.map((act, i) => (
+                  <div key={i} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                    <span className="text-slate-300">{act.particulars}</span>
+                    <span className={`font-mono font-semibold ${act.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      NPR {act.amount.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/60 font-bold rounded-lg text-white">
+                  <span>Net Cash from Investing Activities:</span>
+                  <span className="font-mono text-cyan-400">
+                    NPR {cashFlow.netCashFromInvesting.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Financing Activities */}
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-400 mb-3 pb-2 border-b border-slate-800">
+                3. Cash Flows from Financing Activities
+              </h3>
+              <div className="space-y-2 text-xs">
+                {cashFlow.financingActivities.map((act, i) => (
+                  <div key={i} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
+                    <span className="text-slate-300">{act.particulars}</span>
+                    <span className={`font-mono font-semibold ${act.amount >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      NPR {act.amount.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/60 font-bold rounded-lg text-white">
+                  <span>Net Cash from Financing Activities:</span>
+                  <span className="font-mono text-purple-400">
+                    NPR {cashFlow.netCashFromFinancing.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Summary Footing */}
+            <div className="pt-4 border-t border-slate-800 space-y-2 text-xs font-semibold">
+              <div className="flex justify-between py-2 px-3 bg-slate-950/40 rounded-lg">
+                <span className="text-slate-400">Beginning Cash & Bank Balance:</span>
+                <span className="font-mono text-white">NPR {cashFlow.beginningCash.toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between py-2 px-3 bg-slate-950/40 rounded-lg">
+                <span className="text-slate-400">Net Increase / (Decrease) in Cash:</span>
+                <span className={`font-mono ${cashFlow.netChangeInCash >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  NPR {cashFlow.netChangeInCash.toLocaleString()}
+                </span>
+              </div>
+              <div className="flex justify-between py-3 px-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl font-bold text-sm text-emerald-300">
+                <span>ENDING CASH & BANK POSITION:</span>
+                <span className="font-mono text-emerald-400 font-extrabold">NPR {cashFlow.endingCash.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 5. TRIAL BALANCE */}
+      {/* ========================================================================= */}
+      {activeTab === 'trial' && (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800">
+            <div>
+              <h2 className="text-lg font-bold text-white flex items-center space-x-2">
+                <Layers className="w-5 h-5 text-amber-400" />
+                <span>Adjusted Trial Balance (Equilibrium Verification)</span>
+              </h2>
+              <p className="text-xs text-slate-400">Summary verification of all Ledger Debit and Credit balances</p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleExportTrialBalancePDF}
+                className="flex items-center space-x-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
+              >
+                <Download className="w-3.5 h-3.5 text-amber-400" />
+                <span>Download PDF</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Trial Balance Table */}
+          <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-950/70 border-b border-slate-800 text-slate-400">
+                    <th className="py-3 px-4 font-semibold w-24">Code</th>
+                    <th className="py-3 px-3 font-semibold">Account Title</th>
+                    <th className="py-3 px-3 font-semibold w-32">Category</th>
+                    <th className="py-3 px-3 font-semibold w-36 text-right">Debit Balance (NPR)</th>
+                    <th className="py-3 px-4 font-semibold w-36 text-right">Credit Balance (NPR)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {trialBalance.accounts.map(acc => (
+                    <tr key={acc.accountId} className="hover:bg-slate-800/30 transition">
+                      <td className="py-2.5 px-4 font-mono font-bold text-amber-400">{acc.accountCode}</td>
+                      <td className="py-2.5 px-3 font-medium text-white">{acc.accountName}</td>
+                      <td className="py-2.5 px-3 text-slate-400">{acc.category}</td>
+                      <td className="py-2.5 px-3 text-right font-mono font-semibold text-emerald-400">
+                        {acc.debitBalance > 0 ? `NPR ${acc.debitBalance.toLocaleString()}` : '—'}
+                      </td>
+                      <td className="py-2.5 px-4 text-right font-mono font-semibold text-rose-400">
+                        {acc.creditBalance > 0 ? `NPR ${acc.creditBalance.toLocaleString()}` : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-950 font-bold border-t border-slate-700 text-white">
+                    <td colSpan={3} className="py-3 px-4 text-right uppercase tracking-wider text-xs">
+                      Total Trial Balance:
+                    </td>
+                    <td className="py-3 px-3 text-right font-mono text-emerald-400 text-sm">
+                      NPR {trialBalance.totalDebit.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right font-mono text-rose-400 text-sm">
+                      NPR {trialBalance.totalCredit.toLocaleString()}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 6. GENERAL LEDGER & SUB-LEDGERS */}
+      {/* ========================================================================= */}
+      {activeTab === 'ledger' && <GeneralLedgerView />}
+
+      {/* ========================================================================= */}
+      {/* 7. VOUCHER & JOURNAL REGISTER */}
+      {/* ========================================================================= */}
+      {activeTab === 'vouchers' && (
+        <VoucherManagement onOpenNewVoucher={(type) => handleOpenVoucher(type)} />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 8. CHART OF ACCOUNTS MASTER */}
+      {/* ========================================================================= */}
+      {activeTab === 'coa' && <ChartOfAccountsView />}
+
+      {/* ========================================================================= */}
+      {/* 9. FIXED ASSETS REGISTER */}
+      {/* ========================================================================= */}
+      {activeTab === 'assets' && <FixedAssetsView />}
+
+      {/* ========================================================================= */}
+      {/* 10. FISCAL PERIODS & SETTINGS */}
+      {/* ========================================================================= */}
+      {activeTab === 'settings' && <FiscalPeriodView />}
+
+      {/* ========================================================================= */}
+      {/* UNIVERSAL DOUBLE-ENTRY VOUCHER MODAL */}
+      {/* ========================================================================= */}
+      <UniversalVoucherModal
+        isOpen={showVoucherModal}
+        onClose={() => setShowVoucherModal(false)}
+        initialType={modalInitialType}
+        onVoucherPosted={(vNum) => {
+          setSyncToast(`✓ Posted Double-Entry Voucher #${vNum}! All financial statements, General Ledger, and trial balance updated.`);
+          setTimeout(() => setSyncToast(null), 6000);
+        }}
+      />
     </div>
   );
 };

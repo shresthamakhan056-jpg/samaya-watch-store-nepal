@@ -299,6 +299,135 @@ export const DomainGoLiveGuide: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Google Console & Namecheap Troubleshooting Section */}
+      <div className="p-6 bg-gradient-to-b from-amber-950/30 to-zinc-950 border border-amber-500/40 rounded-2xl space-y-5">
+        <div className="flex items-center gap-2 border-b border-zinc-800 pb-3">
+          <ShieldCheck className="w-6 h-6 text-amber-400" />
+          <div>
+            <h3 className="font-serif font-bold text-amber-100 text-lg">
+              Google Console & Namecheap Troubleshooting Guide
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Having trouble verifying or completing domain setup in Google Cloud / Firebase Console for <span className="text-amber-300 font-mono">kalpachhen.com</span>? Follow these exact fixes:
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          {/* Issue 1 */}
+          <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 space-y-2">
+            <div className="text-amber-400 font-bold text-xs flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center text-[10px] text-amber-300">1</span>
+              <span>Domain Ownership Verification</span>
+            </div>
+            <p className="text-[11px] text-zinc-300 leading-relaxed">
+              Google requires you to prove you own <strong className="text-amber-200">kalpachhen.com</strong> before mapping it.
+            </p>
+            <div className="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1 font-mono">
+              <div className="text-emerald-400 font-bold">Fix in Namecheap:</div>
+              <div>Add <span className="text-amber-300 font-bold">TXT Record</span></div>
+              <div>Host: <code className="text-amber-300 font-bold">@</code></div>
+              <div className="truncate">Value: <code className="text-amber-300">google-site-verification=...</code></div>
+            </div>
+          </div>
+
+          {/* Issue 2 */}
+          <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 space-y-2">
+            <div className="text-amber-400 font-bold text-xs flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center text-[10px] text-amber-300">2</span>
+              <span>Namecheap Nameservers Check</span>
+            </div>
+            <p className="text-[11px] text-zinc-300 leading-relaxed">
+              If your records in Namecheap's "Advanced DNS" aren't taking effect, check your Nameserver setting.
+            </p>
+            <div className="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1 font-mono">
+              <div className="text-emerald-400 font-bold">Fix in Namecheap Domain Tab:</div>
+              <div>Nameservers dropdown must be set to:</div>
+              <div className="text-amber-300 font-bold">"Namecheap BasicDNS"</div>
+              <div className="text-[10px] text-zinc-500">(Do NOT select Custom DNS)</div>
+            </div>
+          </div>
+
+          {/* Issue 3 */}
+          <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800 space-y-2">
+            <div className="text-amber-400 font-bold text-xs flex items-center gap-1.5">
+              <span className="w-5 h-5 rounded-full bg-amber-500/20 flex items-center justify-center text-[10px] text-amber-300">3</span>
+              <span>Instant AI Studio Sharing</span>
+            </div>
+            <p className="text-[11px] text-zinc-300 leading-relaxed">
+              Want to make your watch store immediately live for customers without waiting for Google Console?
+            </p>
+            <div className="bg-zinc-950 p-2.5 rounded-lg border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1">
+              <div className="text-emerald-400 font-bold font-mono">Use AI Studio Direct URL:</div>
+              <p className="text-[10px] text-zinc-300">
+                Click <strong className="text-amber-300">Share / Deploy</strong> in the top AI Studio bar to get an instant Cloud Run HTTPS web link!
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* GitHub to Live Hosting Step-by-Step Guide */}
+      <div className="p-6 bg-zinc-900 border border-zinc-800 rounded-2xl space-y-6">
+        <div className="flex items-center gap-3 border-b border-zinc-800 pb-4">
+          <Server className="w-6 h-6 text-amber-400" />
+          <div>
+            <h3 className="font-serif font-bold text-amber-100 text-lg">
+              How to Host Your Store Directly From GitHub (Step-by-Step)
+            </h3>
+            <p className="text-xs text-zinc-400">
+              Complete workflow to push code to GitHub and host it live with automatic updates when you make changes.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Step A */}
+          <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono font-bold">STEP 1</span>
+              <h4 className="font-bold text-sm text-zinc-100">Export App to GitHub</h4>
+            </div>
+            <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside leading-relaxed">
+              <li>In AI Studio top right, click <strong className="text-amber-300">Settings / Export</strong> icon.</li>
+              <li>Select <strong className="text-amber-300">Export to GitHub</strong>.</li>
+              <li>Connect your GitHub account and choose repository name (e.g., <code className="text-amber-300 font-mono">kalpachhen-app</code>).</li>
+              <li>Click <strong className="text-emerald-400 font-bold">Create Repository</strong>.</li>
+            </ol>
+          </div>
+
+          {/* Step B */}
+          <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono font-bold">STEP 2</span>
+              <h4 className="font-bold text-sm text-zinc-100">Connect to Free Host (Vercel/Render)</h4>
+            </div>
+            <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside leading-relaxed">
+              <li>Go to <strong className="text-amber-300">Vercel.com</strong> or <strong className="text-amber-300">Render.com</strong> and sign up with GitHub.</li>
+              <li>Click <strong className="text-emerald-400 font-bold">Add New Project</strong> & select your <code className="text-amber-300 font-mono">kalpachhen-app</code> repository.</li>
+              <li>Framework Preset will auto-detect as <strong className="text-amber-300 font-mono">Vite</strong> (Build Command: <code className="text-amber-300 font-mono">npm run build</code>, Output: <code className="text-amber-300 font-mono">dist</code>).</li>
+              <li>Click <strong className="text-emerald-400 font-bold">Deploy</strong>.</li>
+            </ol>
+          </div>
+
+          {/* Step C */}
+          <div className="bg-zinc-950 p-5 rounded-xl border border-zinc-800 space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-xs font-mono font-bold">STEP 3</span>
+              <h4 className="font-bold text-sm text-zinc-100">Point www.kalpachhen.com</h4>
+            </div>
+            <ol className="text-xs text-zinc-300 space-y-2 list-decimal list-inside leading-relaxed">
+              <li>In Vercel / Render project settings, go to <strong className="text-amber-300">Domains</strong>.</li>
+              <li>Add <strong className="text-amber-300 font-mono">kalpachhen.com</strong> & <strong className="text-amber-300 font-mono">www.kalpachhen.com</strong>.</li>
+              <li>In Namecheap Advanced DNS, add the CNAME provided by Vercel/Render (e.g. <code className="text-amber-300 font-mono">cname.vercel-dns.com</code>).</li>
+              <li>Your custom domain is live with automatic SSL!</li>
+            </ol>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

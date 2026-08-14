@@ -10,17 +10,38 @@ import QRCode from 'qrcode';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 
 // Generic CSV Exporter
-export const exportToCSV = (filename: string, headers: string[], rows: (string | number)[][]) => {
+export const exportToCSV = (
+  filenameOrData: string | any[],
+  headersOrFilename?: string[] | string,
+  maybeRows?: (string | number)[][]
+) => {
   const sanitize = (val: string | number | undefined | null) => {
     if (val === undefined || val === null) return '""';
     const str = String(val).replace(/"/g, '""');
     return `"${str}"`;
   };
 
-  const csvContent = [
-    headers.map(sanitize).join(','),
-    ...rows.map(row => row.map(sanitize).join(','))
-  ].join('\n');
+  let filename = 'Export';
+  let csvContent = '';
+
+  if (Array.isArray(filenameOrData)) {
+    const data = filenameOrData;
+    filename = (typeof headersOrFilename === 'string' ? headersOrFilename : 'Report') || 'Report';
+    if (data.length === 0) return;
+    const headers = Object.keys(data[0]);
+    csvContent = [
+      headers.map(sanitize).join(','),
+      ...data.map(item => headers.map(h => sanitize(item[h] !== undefined && item[h] !== null ? item[h] : '')).join(','))
+    ].join('\n');
+  } else {
+    filename = filenameOrData;
+    const headers = (headersOrFilename as string[]) || [];
+    const rows = maybeRows || [];
+    csvContent = [
+      headers.map(sanitize).join(','),
+      ...rows.map(row => row.map(sanitize).join(','))
+    ].join('\n');
+  }
 
   const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -1164,4 +1185,294 @@ export const exportSingleEstimateBillPDF = async (sale: Sale) => {
 
   doc.save(`Sales_Estimate_Bill_${sale.invoiceNumber}.pdf`);
 };
+
+// ============================================================================
+// FINANCIAL & ACCOUNTING ENGINE PDF EXPORTERS
+// ============================================================================
+
+export const exportTrialBalancePDF = (
+  rows: any[],
+  totalDebit: number,
+  totalCredit: number,
+  isBalanced: boolean,
+  fiscalYear: string
+) => {
+  const tableRows = rows.map(r => [
+    r.accountCode,
+    r.accountName,
+    r.category,
+    r.openingDebit > 0 ? r.openingDebit.toLocaleString() : (r.openingCredit > 0 ? `(${r.openingCredit.toLocaleString()})` : '-'),
+    r.periodDebit > 0 ? r.periodDebit.toLocaleString() : '-',
+    r.periodCredit > 0 ? r.periodCredit.toLocaleString() : '-',
+    r.closingDebit > 0 ? r.closingDebit.toLocaleString() : '-',
+    r.closingCredit > 0 ? r.closingCredit.toLocaleString() : '-'
+  ]);
+
+  tableRows.push([
+    'TOTAL',
+    'GRAND TOTAL OF ALL LEDGERS',
+    isBalanced ? 'BALANCED (DR=CR)' : 'UNBALANCED',
+    '',
+    '',
+    '',
+    totalDebit.toLocaleString(),
+    totalCredit.toLocaleString()
+  ]);
+
+  exportToPDF(
+    `Trial_Balance_${fiscalYear.replace(/\s+/g, '_')}`,
+    'TRIAL BALANCE STATEMENT',
+    `Fiscal Period: ${fiscalYear} | Accounting Standard: Double-Entry GL | Status: ${isBalanced ? 'Balanced' : 'Difference Detected'}`,
+    ['Code', 'Account Title', 'Category', 'Opening', 'Period Dr', 'Period Cr', 'Closing Dr (NPR)', 'Closing Cr (NPR)'],
+    tableRows,
+    [
+      { label: 'Total Debits', value: `NPR ${totalDebit.toLocaleString()}` },
+      { label: 'Total Credits', value: `NPR ${totalCredit.toLocaleString()}` },
+      { label: 'GL Equilibrium', value: isBalanced ? 'PERFECT (0.00 Diff)' : 'OUT OF BALANCE' }
+    ],
+    'landscape'
+  );
+};
+
+export const exportProfitAndLossPDF = (pnl: any, fiscalYear: string) => {
+  const rows: (string | number)[][] = [
+    ['4000', 'Gross Sales Revenue', pnl.grossRevenue.toLocaleString()],
+    ['5030', 'Less: Sales Discounts Given', `(${pnl.discountsGiven.toLocaleString()})`],
+    ['', 'NET OPERATING REVENUE', pnl.netRevenue.toLocaleString()],
+    ['5010', 'Less: Cost of Goods Sold (COGS)', `(${pnl.cogs.toLocaleString()})`],
+    ['', `GROSS PROFIT (Gross Margin: ${pnl.grossMarginPct}%)`, pnl.grossProfit.toLocaleString()],
+    ['', '--- OPERATING EXPENSES ---', '']
+  ];
+
+  pnl.operatingExpenses.forEach((grp: any) => {
+    rows.push(['', `[${grp.group.toUpperCase()}]`, grp.total.toLocaleString()]);
+    grp.accounts.forEach((acc: any) => {
+      rows.push([acc.code, `  ${acc.name}`, acc.amount.toLocaleString()]);
+    });
+  });
+
+  rows.push(
+    ['', 'TOTAL OPERATING EXPENSES', `(${pnl.totalOperatingExpenses.toLocaleString()})`],
+    ['', `OPERATING PROFIT / EBIT (${pnl.operatingMarginPct}%)`, pnl.operatingProfit.toLocaleString()],
+    ['', 'Income Tax Expense', pnl.taxExpense > 0 ? `(${pnl.taxExpense.toLocaleString()})` : '-'],
+    ['', `NET PROFIT / (LOSS) FOR THE PERIOD (${pnl.netMarginPct}%)`, pnl.netProfit.toLocaleString()]
+  );
+
+  exportToPDF(
+    `Profit_And_Loss_${fiscalYear.replace(/\s+/g, '_')}`,
+    'PROFIT & LOSS STATEMENT (INCOME STATEMENT)',
+    `Fiscal Period: ${fiscalYear} | Method: Accrual Basis | Currency: NPR`,
+    ['Account Code', 'Particulars / Line Item', 'Amount (NPR)'],
+    rows,
+    [
+      { label: 'Net Revenue', value: `NPR ${pnl.netRevenue.toLocaleString()}` },
+      { label: 'Cost of Goods Sold', value: `NPR ${pnl.cogs.toLocaleString()}` },
+      { label: 'Gross Profit', value: `NPR ${pnl.grossProfit.toLocaleString()} (${pnl.grossMarginPct}%)` },
+      { label: 'Net Income', value: `NPR ${pnl.netProfit.toLocaleString()} (${pnl.netMarginPct}%)` }
+    ],
+    'portrait'
+  );
+};
+
+export const exportBalanceSheetPDF = (bs: any, fiscalYear: string) => {
+  const rows: (string | number)[][] = [
+    ['--- I. ASSETS ---', '', ''],
+    ['Current Assets', '', '']
+  ];
+
+  bs.currentAssets.forEach((a: any) => {
+    rows.push([`  ${a.code}`, a.name, a.amount.toLocaleString()]);
+  });
+  rows.push(['', 'Total Current Assets', bs.totalCurrentAssets.toLocaleString()]);
+
+  rows.push(['Fixed Assets (Property & Equipment)', '', '']);
+  bs.fixedAssets.forEach((a: any) => {
+    rows.push([`  ${a.code}`, a.name, a.amount.toLocaleString()]);
+  });
+  rows.push(['  1590', 'Less: Accumulated Depreciation', `(${bs.lessAccumulatedDepreciation.toLocaleString()})`]);
+  rows.push(['', 'Net Fixed Assets', bs.netFixedAssets.toLocaleString()]);
+  rows.push(['', 'TOTAL ASSETS', bs.totalAssets.toLocaleString()]);
+
+  rows.push(['--- II. LIABILITIES ---', '', '']);
+  rows.push(['Current Liabilities', '', '']);
+  bs.currentLiabilities.forEach((l: any) => {
+    rows.push([`  ${l.code}`, l.name, l.amount.toLocaleString()]);
+  });
+  rows.push(['', 'Total Current Liabilities', bs.totalCurrentLiabilities.toLocaleString()]);
+
+  rows.push(['--- III. EQUITY ---', '', '']);
+  bs.equityItems.forEach((e: any) => {
+    rows.push([`  ${e.code}`, e.name, e.amount.toLocaleString()]);
+  });
+  rows.push(['  3020', 'Retained Earnings (Prior Years)', bs.retainedEarningsPrior.toLocaleString()]);
+  rows.push(['', 'Current Period Net Profit / (Loss)', bs.currentPeriodNetIncome.toLocaleString()]);
+  rows.push(['', 'Total Equity', bs.totalEquity.toLocaleString()]);
+  rows.push(['', 'TOTAL LIABILITIES & EQUITY', bs.totalLiabilitiesAndEquity.toLocaleString()]);
+  rows.push(['', 'BALANCE CHECK (Assets - Liab & Equity)', `${bs.balanceDifference.toLocaleString()} [${bs.isBalanced ? 'MATCHED' : 'UNBALANCED'}]`]);
+
+  exportToPDF(
+    `Balance_Sheet_${fiscalYear.replace(/\s+/g, '_')}`,
+    'BALANCE SHEET (STATEMENT OF FINANCIAL POSITION)',
+    `Fiscal Period: ${fiscalYear} | Accounting Equation: Assets = Liabilities + Equity | Currency: NPR`,
+    ['Code', 'Financial Line Item', 'Amount (NPR)'],
+    rows,
+    [
+      { label: 'Total Assets', value: `NPR ${bs.totalAssets.toLocaleString()}` },
+      { label: 'Total Liabilities', value: `NPR ${bs.totalLiabilities.toLocaleString()}` },
+      { label: 'Total Equity', value: `NPR ${bs.totalEquity.toLocaleString()}` },
+      { label: 'Balance Check', value: bs.isBalanced ? 'BALANCED' : 'MISMATCH' }
+    ],
+    'portrait'
+  );
+};
+
+export const exportCashFlowPDF = (cf: any, fiscalYear: string) => {
+  const rows: (string | number)[][] = [
+    ['--- CASH FLOW FROM OPERATING ACTIVITIES ---', ''],
+    ['Net Profit / Income for the Period', cf.operatingActivities.netIncome.toLocaleString()],
+    ['Adjustments for Working Capital Changes:', ''],
+    ['  (Increase) / Decrease in Accounts Receivable', `(${cf.operatingActivities.workingCapitalChanges.arChange.toLocaleString()})`],
+    ['  (Increase) / Decrease in Merchandise Inventory', `(${cf.operatingActivities.workingCapitalChanges.inventoryChange.toLocaleString()})`],
+    ['  Increase / (Decrease) in Accounts Payable', cf.operatingActivities.workingCapitalChanges.apChange.toLocaleString()],
+    ['  Increase / (Decrease) in VAT Payable', cf.operatingActivities.workingCapitalChanges.vatPayableChange.toLocaleString()],
+    ['NET CASH FLOW FROM OPERATING ACTIVITIES', cf.operatingActivities.netOperatingCash.toLocaleString()],
+    ['--- CASH FLOW FROM INVESTING ACTIVITIES ---', ''],
+    ['Purchase of Fixed Assets & Equipment', `(${cf.investingActivities.fixedAssetPurchases.toLocaleString()})`],
+    ['NET CASH FLOW FROM INVESTING ACTIVITIES', cf.investingActivities.netInvestingCash.toLocaleString()],
+    ['--- CASH FLOW FROM FINANCING ACTIVITIES ---', ''],
+    ['Owner Capital Injections', cf.financingActivities.capitalInjections.toLocaleString()],
+    ['Less: Owner Drawings / Withdrawals', `(${cf.financingActivities.drawings.toLocaleString()})`],
+    ['NET CASH FLOW FROM FINANCING ACTIVITIES', cf.financingActivities.netFinancingCash.toLocaleString()],
+    ['NET INCREASE / (DECREASE) IN CASH & BANK', cf.netCashFlow.toLocaleString()],
+    ['Cash & Cash Equivalents at Beginning of Period', cf.beginningCashAndBank.toLocaleString()],
+    ['CASH & CASH EQUIVALENTS AT END OF PERIOD', cf.endingCashAndBank.toLocaleString()]
+  ];
+
+  exportToPDF(
+    `Cash_Flow_Statement_${fiscalYear.replace(/\s+/g, '_')}`,
+    'STATEMENT OF CASH FLOWS',
+    `Fiscal Period: ${fiscalYear} | Method: Indirect Operating Cash Flow | Currency: NPR`,
+    ['Particulars', 'Amount (NPR)'],
+    rows,
+    [
+      { label: 'Operating Cash Flow', value: `NPR ${cf.operatingActivities.netOperatingCash.toLocaleString()}` },
+      { label: 'Net Cash Movement', value: `NPR ${cf.netCashFlow.toLocaleString()}` },
+      { label: 'Ending Cash & Bank', value: `NPR ${cf.endingCashAndBank.toLocaleString()}` }
+    ],
+    'portrait'
+  );
+};
+
+export const exportCashFlowReportPDF = exportCashFlowPDF;
+
+export const exportGeneralLedgerPDF = (rowsOrAccounts: any[], title = 'GENERAL LEDGER') => {
+  let tableRows: (string | number)[][] = [];
+
+  if (rowsOrAccounts.length > 0 && rowsOrAccounts[0].transactions) {
+    rowsOrAccounts.forEach((acc: any) => {
+      acc.transactions.forEach((r: any) => {
+        tableRows.push([
+          r.date || '',
+          r.entryNumber || '',
+          r.voucherType || 'JV',
+          `${acc.accountCode} - ${acc.accountName}`,
+          r.particulars || r.description || '',
+          r.debit > 0 ? r.debit.toLocaleString() : '-',
+          r.credit > 0 ? r.credit.toLocaleString() : '-',
+          (r.runningBalance !== undefined ? r.runningBalance : (r.balance || 0)).toLocaleString()
+        ]);
+      });
+    });
+  } else {
+    tableRows = rowsOrAccounts.map(r => [
+      r.date || '',
+      r.entryNumber || '',
+      r.voucherType || 'JV',
+      `${r.accountCode || ''} - ${r.accountName || ''}`,
+      r.particulars || r.description || '',
+      r.debit > 0 ? r.debit.toLocaleString() : '-',
+      r.credit > 0 ? r.credit.toLocaleString() : '-',
+      (r.balance !== undefined ? r.balance : (r.runningBalance || 0)).toLocaleString()
+    ]);
+  }
+
+  exportToPDF(
+    'General_Ledger_Complete',
+    title,
+    `Export Date: ${new Date().toLocaleDateString()} | Full Audited Double-Entry General Ledger`,
+    ['Date', 'Voucher #', 'Type', 'Account', 'Particulars', 'Debit (NPR)', 'Credit (NPR)', 'Running Bal (NPR)'],
+    tableRows,
+    undefined,
+    'landscape'
+  );
+};
+
+export const exportVoucherReceiptPDF = (entry: any) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  doc.setFillColor(24, 24, 27);
+  doc.rect(0, 0, pageWidth, 28, 'F');
+
+  doc.setFillColor(245, 158, 11);
+  doc.rect(0, 28, pageWidth, 2, 'F');
+
+  doc.setTextColor(255, 255, 255);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(16);
+  doc.text('KALPA LUXURY TIMEPIECES', 14, 12);
+
+  doc.setFontSize(10);
+  doc.setTextColor(245, 158, 11);
+  doc.text(`OFFICIAL ACCOUNTING VOUCHER: ${entry.voucherType || 'JOURNAL ENTRY'}`, 14, 20);
+
+  doc.setFillColor(245, 245, 247);
+  doc.roundedRect(14, 35, pageWidth - 28, 24, 2, 2, 'F');
+
+  doc.setFontSize(8.5);
+  doc.setTextColor(50, 50, 50);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Voucher Number: ${entry.entryNumber}`, 18, 42);
+  doc.text(`Transaction Date: ${entry.date}`, 18, 48);
+  doc.text(`Reference / Ref Inv: ${entry.reference || 'N/A'}`, 18, 54);
+
+  doc.text(`Created By: ${entry.createdBy}`, 110, 42);
+  doc.text(`Module Source: ${entry.sourceModule || 'Accounting'}`, 110, 48);
+  doc.text(`Cost Center: ${entry.costCenterName || 'Headquarters'}`, 110, 54);
+
+  const tableRows = entry.lines.map((l: any) => [
+    l.accountCode,
+    l.accountName,
+    l.particulars || entry.description,
+    l.debit > 0 ? l.debit.toLocaleString() : '-',
+    l.credit > 0 ? l.credit.toLocaleString() : '-'
+  ]);
+
+  const totalDr = entry.lines.reduce((s: number, l: any) => s + (Number(l.debit) || 0), 0);
+  const totalCr = entry.lines.reduce((s: number, l: any) => s + (Number(l.credit) || 0), 0);
+
+  tableRows.push(['TOTAL', '', 'TOTAL BALANCED ENTRY', totalDr.toLocaleString(), totalCr.toLocaleString()]);
+
+  autoTable(doc, {
+    startY: 64,
+    head: [['Code', 'Account Title', 'Particulars / Memo', 'Debit (NPR)', 'Credit (NPR)']],
+    body: tableRows,
+    theme: 'grid',
+    headStyles: { fillColor: [24, 24, 27], textColor: [245, 158, 11], fontStyle: 'bold' }
+  });
+
+  const finalY = (doc as any).lastAutoTable.finalY + 15;
+  doc.setFontSize(8);
+  doc.setTextColor(120, 120, 120);
+  doc.text(`Description / Narration: ${entry.description}`, 14, finalY);
+
+  doc.line(14, finalY + 25, 60, finalY + 25);
+  doc.text('Prepared By (Accountant)', 14, finalY + 30);
+
+  doc.line(pageWidth - 64, finalY + 25, pageWidth - 14, finalY + 25);
+  doc.text('Authorized Signatory', pageWidth - 64, finalY + 30);
+
+  doc.save(`Voucher_${entry.entryNumber}.pdf`);
+};
+
 

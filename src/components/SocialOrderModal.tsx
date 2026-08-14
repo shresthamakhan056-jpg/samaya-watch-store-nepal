@@ -86,12 +86,12 @@ export const SocialOrderModal: React.FC<SocialOrderModalProps> = ({ product, onC
         {/* Social Action Buttons */}
         <div className="space-y-2.5">
           <a
-            href={`https://wa.me/9779851012345?text=${encodedMsg}`}
+            href={`https://wa.me/9779823680863?text=${encodedMsg}`}
             target="_blank"
             rel="noreferrer"
             className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider flex items-center justify-between transition-all"
           >
-            <span className="flex items-center gap-2">📱 Order via WhatsApp (+977-9851012345)</span>
+            <span className="flex items-center gap-2">📱 Order via WhatsApp (+977 9823680863)</span>
             <ArrowUpRight className="w-4 h-4" />
           </a>
 

@@ -334,7 +334,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
 
             <div className="shrink-0 space-y-3 w-full md:w-auto">
               <a
-                href={`https://wa.me/${(homepageContent.showroomPhone || '9779851234567').replace(/[^0-9]/g, '')}`}
+                href={`https://wa.me/${(homepageContent.showroomPhone || '9779823680863').replace(/[^0-9]/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
                 className="w-full sm:w-auto px-8 py-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-serif font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xl"

@@ -22,7 +22,8 @@ import {
   Settings,
   Check,
   ShieldAlert,
-  Award
+  Award,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -34,6 +35,7 @@ import {
   WarrantyExtension
 } from '../../types';
 import { exportWarrantyReport, exportWarrantyReportPDF } from '../../utils/reportExporter';
+import { formatWarrantyCertificateMessage, formatWarrantyClaimStatusMessage, openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../../utils/whatsappService';
 
 export const WarrantyModule: React.FC = () => {
   const {
@@ -516,6 +518,17 @@ export const WarrantyModule: React.FC = () => {
                       <td className="p-3 text-right font-sans">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            onClick={() => {
+                              const msg = formatWarrantyCertificateMessage(w);
+                              openWhatsApp(w.customerMobile, msg);
+                            }}
+                            title="Send Verified Guarantee to Customer WhatsApp"
+                            className="px-2 py-1 rounded bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 text-xs font-bold flex items-center gap-1 cursor-pointer"
+                          >
+                            <MessageSquare className="w-3 h-3 text-emerald-400" />
+                            <span>WhatsApp</span>
+                          </button>
+                          <button
                             onClick={() => setShowClaimModal(w)}
                             title="Register Warranty Service Claim"
                             className="px-2 py-1 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 hover:bg-amber-500/30 text-xs font-bold flex items-center gap-1 cursor-pointer"
@@ -872,6 +885,25 @@ export const WarrantyModule: React.FC = () => {
                   <div className="text-[10px] text-zinc-500 font-mono">Channels: {tmpl.channels.join(', ')}</div>
                 </div>
               ))}
+            </div>
+
+            {/* WhatsApp Business Live Gateway Status */}
+            <div className="mt-4 p-4 bg-emerald-950/30 border border-emerald-500/40 rounded-xl space-y-2 text-xs">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-emerald-300 flex items-center gap-2 font-mono uppercase">
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  Official WhatsApp Business Gateway
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  ONLINE & ACTIVE
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400">
+                Official Boutique WhatsApp Number: <strong className="text-amber-300 font-mono">+{OFFICIAL_BOUTIQUE_WHATSAPP}</strong>
+              </p>
+              <div className="text-[10px] text-zinc-500">
+                Supports instantaneous customer estimate bill dispatches, warranty QR certificates, and live verification queries.
+              </div>
             </div>
           </div>
         </div>

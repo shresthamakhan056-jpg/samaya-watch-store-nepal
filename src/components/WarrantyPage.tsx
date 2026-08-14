@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShieldCheck, CheckCircle2, AlertCircle, Phone, Watch, Sparkles, QrCode, Wrench, Plus, CheckCircle, Clock } from 'lucide-react';
+import { Search, ShieldCheck, CheckCircle2, AlertCircle, Phone, Watch, Sparkles, QrCode, Wrench, Plus, CheckCircle, Clock, MessageSquare, Send } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DigitalWarrantyCard } from './DigitalWarrantyCard';
 import { Warranty } from '../types';
+import { formatWarrantyVerificationRequestMessage, openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../utils/whatsappService';
 
 export const WarrantyPage: React.FC = () => {
   const { warranties, getWarrantyByIdOrMobile, getWarrantiesByMobile, logVerification, submitClaim, claims } = useApp();
@@ -50,6 +51,12 @@ export const WarrantyPage: React.FC = () => {
         logVerification(term, 'Warranty ID', 'Not Found');
       }
     }
+  };
+
+  const handleWhatsAppVerifyRequest = (searchVal?: string) => {
+    const term = (searchVal || query || 'General Inquiry').trim();
+    const msg = formatWarrantyVerificationRequestMessage(term);
+    openWhatsApp(OFFICIAL_BOUTIQUE_WHATSAPP, msg);
   };
 
   const handleSubmitPublicClaim = (e: React.FormEvent) => {
@@ -120,17 +127,27 @@ export const WarrantyPage: React.FC = () => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Enter Mobile (e.g. 9851234567) or Warranty ID (WRN-2026-0101)..."
+                placeholder="Enter Mobile (e.g. 9823680863) or Warranty ID (WRN-2026-0101)..."
                 className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 rounded-xl pl-12 pr-4 py-3.5 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono"
               />
             </div>
 
             <button
               type="submit"
-              className="px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-zinc-950 font-bold text-xs sm:text-sm tracking-wider uppercase shadow-lg shadow-amber-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              className="px-6 sm:px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-zinc-950 font-bold text-xs sm:text-sm tracking-wider uppercase shadow-lg shadow-amber-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
               <Search className="w-4 h-4" />
               <span>Verify કल्प Record</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleWhatsAppVerifyRequest()}
+              className="px-5 py-3.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs sm:text-sm tracking-wider uppercase shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              title="Request Manual Verification via Official WhatsApp Business"
+            >
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
+              <span>Request via WhatsApp</span>
             </button>
           </form>
 
@@ -269,15 +286,24 @@ export const WarrantyPage: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="bg-zinc-900/80 border border-rose-500/40 rounded-2xl p-8 text-center space-y-3">
+              <div className="bg-zinc-900/80 border border-rose-500/40 rounded-2xl p-8 text-center space-y-4">
                 <AlertCircle className="w-12 h-12 text-rose-400 mx-auto" />
                 <h3 className="font-serif text-xl font-bold text-rose-200">No Verified Warranty Record Found</h3>
                 <p className="text-xs text-zinc-400 max-w-md mx-auto">
                   We could not locate any active sales invoice or warranty certificate matching query <strong className="text-amber-300 font-mono">"{query}"</strong>.
                 </p>
-                <p className="text-[11px] text-zinc-500">
-                  If you recently purchased a timepiece from our boutique, please contact our support team to verify your invoice finalized status.
+                <p className="text-[11px] text-zinc-500 max-w-md mx-auto">
+                  If you recently acquired this timepiece from our boutique or require an authenticity check, please send an instant verification request to our horologist desk on WhatsApp.
                 </p>
+                <div className="pt-2">
+                  <button
+                    onClick={() => handleWhatsAppVerifyRequest(query)}
+                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider inline-flex items-center gap-2 cursor-pointer shadow-lg shadow-emerald-950/50 transition-all"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Inquire on WhatsApp for "{query}"</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

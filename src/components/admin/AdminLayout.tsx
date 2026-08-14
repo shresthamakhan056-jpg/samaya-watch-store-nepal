@@ -13,6 +13,7 @@ import { ReportsModule } from './ReportsModule';
 import { UserManagement } from './UserManagement';
 import { AuditLogsModule } from './AuditLogsModule';
 import { DomainGoLiveGuide } from './DomainGoLiveGuide';
+import { FinancialOverviewLedger } from './FinancialOverviewLedger';
 
 interface AdminLayoutProps {
   setIsAdminOpen: (open: boolean) => void;
@@ -329,8 +330,15 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
           )}
         </div>
 
+        {/* FINANCIAL OVERVIEW SECTION (Double-Entry Ledger, Sales & Inventory Valuation) */}
+        <FinancialOverviewLedger 
+          onNavigateToAccounting={() => setAdminTab('accounting')}
+          onNavigateToSales={() => setAdminTab('sales')}
+          onNavigateToInventory={() => setAdminTab('inventory')}
+        />
+
         {/* TAB RENDERING */}
-        {adminTab === 'dashboard' && <AdminDashboard />}
+        {adminTab === 'dashboard' && <AdminDashboard onNavigateToPurchases={() => setAdminTab('purchases')} />}
         {adminTab === 'sales' && <SalesModule />}
         {adminTab === 'purchases' && <PurchaseModule />}
         {adminTab === 'inventory' && <InventoryModule />}

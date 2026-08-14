@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Plus, Search, AlertTriangle, Layers, Edit, Trash2, Watch, ArrowUpDown, ShieldCheck, Download, FileText, Upload, Sparkles, Copy, X, Check } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Layers, Edit, Trash2, Watch, ArrowUpDown, ShieldCheck, Download, FileText, Upload, Sparkles, Copy, X, Check, BarChart2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Product, MovementType, Gender, ProductStatus } from '../../types';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { exportInventoryReport, exportInventoryReportPDF } from '../../utils/reportExporter';
+import { BrandStockVisualization } from './BrandStockVisualization';
 
 export const InventoryModule: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct, adjustStock, restoreAllStocksExcept, suppliers, currentUser } = useApp();
@@ -11,6 +12,7 @@ export const InventoryModule: React.FC = () => {
   const [selectedBrand, setSelectedBrand] = useState('All');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState<string | null>(null);
+  const [showStockAnalytics, setShowStockAnalytics] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
 
@@ -298,6 +300,14 @@ export const InventoryModule: React.FC = () => {
 
         <div className="flex flex-wrap items-center gap-2">
           <button
+            onClick={() => setShowStockAnalytics(!showStockAnalytics)}
+            className="px-3.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/40 font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
+            title="Toggle Recharts Brand Stock & Replenishment Analytics"
+          >
+            <BarChart2 className="w-4 h-4 text-amber-400" />
+            <span>{showStockAnalytics ? 'Hide Brand Analytics' : 'Show Brand Stock Analytics'}</span>
+          </button>
+          <button
             onClick={() => exportInventoryReportPDF(products)}
             className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs uppercase tracking-wider shadow-lg transition-all cursor-pointer flex items-center gap-2"
           >
@@ -332,6 +342,11 @@ export const InventoryModule: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* BRAND STOCK LEVELS & REPLENISHMENT VISUALIZATION */}
+      {showStockAnalytics && (
+        <BrandStockVisualization />
+      )}
 
       {/* Filter Row */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-zinc-900 p-4 rounded-xl border border-zinc-800">

@@ -1,9 +1,14 @@
 import React from 'react';
-import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText } from 'lucide-react';
+import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText, Layers } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useApp } from '../../context/AppContext';
+import { BrandStockVisualization } from './BrandStockVisualization';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onNavigateToPurchases?: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateToPurchases }) => {
   const { sales, products, warranties, customers, auditLogs, currentUser } = useApp();
 
   // Metrics calculations
@@ -118,6 +123,9 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
       </div>
+
+      {/* REAL-TIME PREMIUM BRAND STOCK LEVELS & REPLENISHMENT VISUALIZATION (RECHARTS) */}
+      <BrandStockVisualization onNavigateToPurchases={onNavigateToPurchases} />
 
       {/* Analytics Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

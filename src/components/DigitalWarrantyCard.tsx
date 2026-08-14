@@ -1,7 +1,8 @@
 import React, { useRef } from 'react';
-import { ShieldCheck, Watch, Calendar, QrCode, User, Phone, FileText, Download, Printer, CheckCircle, AlertTriangle, Clock, Wrench, Sparkles, Building2 } from 'lucide-react';
+import { ShieldCheck, Watch, Calendar, QrCode, User, Phone, FileText, Download, Printer, CheckCircle, AlertTriangle, Clock, Wrench, Sparkles, Building2, MessageSquare } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Warranty } from '../types';
+import { formatWarrantyCertificateMessage, openWhatsApp } from '../utils/whatsappService';
 
 interface DigitalWarrantyCardProps {
   warranty: Warranty;
@@ -21,15 +22,28 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
     window.print();
   };
 
+  const handleSendWhatsApp = () => {
+    const msg = formatWarrantyCertificateMessage(warranty);
+    openWhatsApp(warranty.customerMobile, msg);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Action buttons (Print / Download) */}
-      <div className="flex items-center justify-between print:hidden">
+      {/* Action buttons (Print / Download / WhatsApp) */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 print:hidden">
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono uppercase text-amber-400 font-bold">Verified Warranty Record</span>
           <span className="text-xs text-zinc-500">• Single Source of Truth from ERP Sales</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleSendWhatsApp}
+            className="px-4 py-2 rounded-lg bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600/30 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer transition shadow-sm"
+            title="Send Verified Guarantee to Registered Mobile Number via WhatsApp"
+          >
+            <MessageSquare className="w-4 h-4 text-emerald-400" />
+            <span>Send to Customer WhatsApp</span>
+          </button>
           <button
             onClick={handlePrint}
             className="px-4 py-2 rounded-lg bg-zinc-900 border border-amber-500/40 text-amber-300 hover:bg-amber-500/20 text-xs font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer"

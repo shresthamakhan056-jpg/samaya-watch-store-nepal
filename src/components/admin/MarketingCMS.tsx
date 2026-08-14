@@ -472,8 +472,8 @@ export const MarketingCMS: React.FC = () => {
                       showroomTitle: 'Durbar Marg Flagship Showroom',
                       showroomDescription: 'Experience the finest timepieces in an exclusive, private environment. Our watch specialists are ready to guide your selection.',
                       showroomAddress: '📍 Address: Opposite Annapurna Hotel, Durbar Marg, Kathmandu',
-                      showroomContact: '📞 Phone: +977 9851234567 | Opening Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
-                      showroomPhone: '9779851234567',
+                      showroomContact: '📞 Phone: +977 9823680863 | ✉️ Email: Kalpa9761@gmail.com | Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
+                      showroomPhone: '9779823680863',
                       showroomButtonText: 'Contact Showroom Representative'
                     })}
                     className="p-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-amber-300 transition-colors cursor-pointer"
@@ -557,7 +557,7 @@ export const MarketingCMS: React.FC = () => {
                         value={contentForm.showroomContact ?? ''}
                         onChange={(e) => setContentForm({ ...contentForm, showroomContact: e.target.value })}
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-300"
-                        placeholder="📞 Phone: +977 9851234567 | Opening Hours..."
+                        placeholder="📞 Phone: +977 9823680863 | Opening Hours..."
                       />
                     </div>
                   </div>
@@ -567,10 +567,10 @@ export const MarketingCMS: React.FC = () => {
                       <label className="text-zinc-400 block mb-1 font-mono">Representative WhatsApp Number:</label>
                       <input
                         type="text"
-                        value={contentForm.showroomPhone ?? '9779851234567'}
+                        value={contentForm.showroomPhone ?? '9779823680863'}
                         onChange={(e) => setContentForm({ ...contentForm, showroomPhone: e.target.value })}
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-300 font-mono"
-                        placeholder="9779851234567"
+                        placeholder="9779823680863"
                       />
                     </div>
 

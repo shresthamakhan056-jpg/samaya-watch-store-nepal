@@ -18,6 +18,11 @@ import {
   ClaimStatus,
   Account,
   JournalEntry,
+  JournalEntryLine,
+  FiscalYear,
+  CostCenter,
+  FixedAsset,
+  VoucherType,
   CMSBanner,
   CMSVideo,
   CMSHomepageContent,
@@ -27,6 +32,13 @@ import {
   PaymentMethod,
   DeliveryStatus
 } from '../types';
+import {
+  DEFAULT_CHART_OF_ACCOUNTS,
+  DEFAULT_COST_CENTERS,
+  DEFAULT_FISCAL_YEARS,
+  DEFAULT_FIXED_ASSETS,
+  AccountingEngine
+} from '../utils/accountingEngine';
 import { compressImageDataUrl } from '../utils/imageCompressor';
 import {
   INITIAL_USERS,
@@ -154,13 +166,25 @@ interface AppContextType {
   }) => void;
   deletePurchase: (id: string) => void;
 
-  // Accounting
+  // Accounting & Double-Entry Engine
   accounts: Account[];
   addAccount: (accountData: Omit<Account, 'id' | 'balance'> & { initialBalance?: number }) => Account;
-  deleteAccount: (id: string) => void;
+  updateAccount: (id: string, updatedData: Partial<Account>) => Account | { error: string };
+  deleteAccount: (id: string, force?: boolean) => { success: boolean; error?: string };
   journalEntries: JournalEntry[];
   addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'entryNumber'>) => void;
+  postVoucher: (voucher: Omit<JournalEntry, 'id' | 'entryNumber'> & { entryNumber?: string }) => { entry?: JournalEntry; error?: string };
+  reverseJournalEntry: (entryId: string, reason: string) => JournalEntry | { error: string };
   syncJournalEntriesAndAccounts: () => { entriesCount: number; newEntriesCreated: number; accountsCount: number };
+  fiscalYears: FiscalYear[];
+  addFiscalYear: (fy: Omit<FiscalYear, 'id'>) => void;
+  closeFiscalYear: (id: string) => { success?: boolean; entryNumber?: string; error?: string };
+  costCenters: CostCenter[];
+  addCostCenter: (cc: Omit<CostCenter, 'id'>) => void;
+  fixedAssets: FixedAsset[];
+  addFixedAsset: (asset: Omit<FixedAsset, 'id'>) => void;
+  runAssetDepreciation: (assetId: string) => JournalEntry | { error: string };
+  resetAccountsToDefault: () => void;
 
   // Marketing & Dynamic Homepage CMS
   homepageContent: CMSHomepageContent;
@@ -709,59 +733,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timer);
   }, [users, products, customers, suppliers, sales, purchases, warranties, claims, replacements, extensions, verificationLogs, notificationTemplates, warrantySettings, accounts, journalEntries, banners, videos, homepageContent, auditLogs]);
 
-  // One-time Stock Restoration for non-SIK-SLV-01 items
+  // Purge all legacy dummy data and hardcoded dummy figures on startup
   useEffect(() => {
-    setProducts(prevProducts => {
-      let updated = false;
-      const restored = prevProducts.map(p => {
-        // If it's the Seiko Silver product (SKU: SIK-SLV-01 or ID: prod-karobar-7), keep stock at 0 and soldQuantity at 1
-        if (p.sku === 'SIK-SLV-01' || p.id === 'prod-karobar-7' || p.model === 'Seiko Silver') {
-          if (p.stock !== 0 || p.soldQuantity !== 1 || p.status !== 'Out of Stock') {
-            updated = true;
-            return {
-              ...p,
-              stock: 0,
-              soldQuantity: 1,
-              status: 'Out of Stock' as ProductStatus
-            };
-          }
-          return p;
-        }
-
-        // For all other products, restore stock from INITIAL_PRODUCTS or base quantity
-        const initProd = INITIAL_PRODUCTS.find(ip => ip.id === p.id || ip.sku === p.sku);
-        const targetStock = initProd ? initProd.stock : Math.max(1, p.stock || 1);
-        const targetSold = 0;
-        const targetStatus: ProductStatus = targetStock > 0 ? 'In Stock' : 'Out of Stock';
-
-        if (p.stock !== targetStock || p.soldQuantity !== targetSold || p.status !== targetStatus) {
-          updated = true;
-          return {
-            ...p,
-            stock: targetStock,
-            soldQuantity: targetSold,
-            status: targetStatus
-          };
-        }
-        return p;
-      });
-
-      if (updated) {
-        saveProductsCloud(restored);
-        return restored;
+    // 1. Purge dummy purchases
+    setPurchases(prev => {
+      const filtered = prev.filter(p => p.id !== 'pur-gongabu-20260802' && p.id !== 'pur-1785862946231-ddxqb' && p.invoiceNumber !== 'GWS-2026-0802');
+      if (filtered.length !== prev.length) {
+        savePurchasesCloud(filtered);
+        return filtered;
       }
-      return prevProducts;
+      return prev;
     });
-  }, []);
 
-  // One-time Account Balance Reset for Nabil Bank (1020), eSewa (1030), and Owner Capital (3010)
-  useEffect(() => {
+    // 2. Purge dummy journal entries
+    setJournalEntries(prev => {
+      const filtered = prev.filter(je => 
+        je.id !== 'je-pur-gongabu-20260802' && 
+        je.id !== 'pur-1785862946231-ddxqb' && 
+        je.reference !== 'GWS-2026-0802' &&
+        !je.description?.includes('pur-1785862946231-ddxqb')
+      );
+      if (filtered.length !== prev.length) {
+        saveJournalEntriesCloud(filtered);
+        return filtered;
+      }
+      return prev;
+    });
+
+    // 3. Purge dummy fixed assets
+    setFixedAssets(prev => {
+      const filtered = prev.filter(a => a.id !== 'ast-1' && a.id !== 'ast-2' && a.id !== 'ast-3');
+      if (filtered.length !== prev.length) {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_fixed_assets`, JSON.stringify(filtered));
+        return filtered;
+      }
+      return prev;
+    });
+
+    // 4. Ensure accounts opening balances are zeroed and clean
     setAccounts(prevAccounts => {
       let updated = false;
       const cleaned = prevAccounts.map(a => {
-        if ((a.code === '1020' || a.code === '1030' || a.code === '3010') && a.balance !== 0) {
+        // Zero out old hardcoded opening balances if they existed
+        if (a.openingBalance && a.openingBalance > 0) {
           updated = true;
-          return { ...a, balance: 0 };
+          return { ...a, openingBalance: 0 };
         }
         return a;
       });
@@ -1905,34 +1921,435 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Added Manual Journal Entry', 'Accounting', `Posted JE #${newJE.entryNumber}: ${entry.description}`);
   };
 
-  // Accounts Management (Dynamic creation / removal)
+  // Accounts & Double Entry Management
+  const [fiscalYears, setFiscalYears] = useState<FiscalYear[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_fiscal_years`);
+    return saved ? JSON.parse(saved) : DEFAULT_FISCAL_YEARS;
+  });
+
+  const [costCenters, setCostCenters] = useState<CostCenter[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_cost_centers`);
+    return saved ? JSON.parse(saved) : DEFAULT_COST_CENTERS;
+  });
+
+  const [fixedAssets, setFixedAssets] = useState<FixedAsset[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_fixed_assets`);
+    return saved ? JSON.parse(saved) : DEFAULT_FIXED_ASSETS;
+  });
+
+  const addFiscalYear = (fyData: Omit<FiscalYear, 'id'>) => {
+    const newFY: FiscalYear = {
+      ...fyData,
+      id: `fy-${Date.now()}`
+    };
+    setFiscalYears(prev => {
+      const updated = [newFY, ...prev.map(f => fyData.isCurrent ? { ...f, isCurrent: false } : f)];
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fiscal_years`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Added Fiscal Year', 'Accounting Master', `Added Fiscal Period: ${newFY.name}`);
+  };
+
+  const closeFiscalYear = (id: string): { success?: boolean; entryNumber?: string; error?: string } => {
+    const fy = fiscalYears.find(f => f.id === id);
+    if (!fy) return { error: 'Fiscal year not found' };
+    if (fy.status === 'Closed') return { error: 'This fiscal year is already closed and locked.' };
+
+    const pnl = AccountingEngine.generateProfitAndLoss(journalEntries, accounts);
+    const closingEntry = AccountingEngine.createYearEndClosingEntry(pnl, accounts, journalEntries, fy.name, currentUser.name);
+
+    if (closingEntry.lines.length > 0) {
+      postVoucher(closingEntry);
+    }
+
+    setFiscalYears(prev => {
+      const updated = prev.map(f => f.id === id ? { ...f, status: 'Closed' as const, isCurrent: false } : f);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fiscal_years`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Closed Fiscal Year', 'Accounting Period', `Closed accounting period ${fy.name} with closing entry #${closingEntry.entryNumber}`);
+    return { success: true, entryNumber: closingEntry.entryNumber || 'JV-CLOSE' };
+  };
+
+  const addCostCenter = (ccData: Omit<CostCenter, 'id'>) => {
+    const newCC: CostCenter = {
+      ...ccData,
+      id: `cc-${Date.now()}`
+    };
+    setCostCenters(prev => {
+      const updated = [...prev, newCC];
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cost_centers`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Added Cost Center', 'Accounting Master', `Created Cost Center: ${newCC.name} (${newCC.code})`);
+  };
+
+  const addFixedAsset = (assetData: Omit<FixedAsset, 'id'>) => {
+    const newAsset: FixedAsset = {
+      ...assetData,
+      id: `ast-${Date.now()}`
+    };
+    setFixedAssets(prev => {
+      const updated = [...prev, newAsset];
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fixed_assets`, JSON.stringify(updated));
+      return updated;
+    });
+
+    // Auto-post asset purchase voucher if cost > 0
+    if (newAsset.cost > 0) {
+      postVoucher({
+        entryNumber: `AST-${newAsset.code}`,
+        date: newAsset.purchaseDate,
+        voucherType: 'Fixed Asset Purchase',
+        sourceModule: 'Fixed Assets',
+        description: `Acquisition of Fixed Asset: ${newAsset.name} (${newAsset.code})`,
+        reference: newAsset.code,
+        createdBy: currentUser.name,
+        isPosted: true,
+        lines: [
+          {
+            accountId: newAsset.accountId || 'acc-1510',
+            accountCode: newAsset.accountId.replace('acc-', '') || '1510',
+            accountName: accounts.find(a => a.id === newAsset.accountId)?.name || 'Fixed Asset Account',
+            debit: newAsset.cost,
+            credit: 0,
+            particulars: `Purchase of ${newAsset.name}`
+          },
+          {
+            accountId: 'acc-1020',
+            accountCode: '1020',
+            accountName: 'Nabil Bank Corporate Account',
+            debit: 0,
+            credit: newAsset.cost,
+            particulars: `Bank disbursement for ${newAsset.name}`
+          }
+        ]
+      });
+    }
+
+    logAction('Added Fixed Asset', 'Fixed Assets', `Registered asset ${newAsset.name} at NPR ${newAsset.cost.toLocaleString()}`);
+  };
+
+  const runAssetDepreciation = (assetId: string): JournalEntry | { error: string } => {
+    const asset = fixedAssets.find(a => a.id === assetId);
+    if (!asset) return { error: 'Asset not found' };
+    if (asset.netBookValue <= asset.salvageValue) return { error: 'Asset is fully depreciated to salvage value.' };
+
+    const annualDepreciation = Math.round((asset.cost - asset.salvageValue) * (asset.depreciationRate / 100));
+    const deprAmt = Math.min(annualDepreciation, asset.netBookValue - asset.salvageValue);
+    if (deprAmt <= 0) return { error: 'Depreciation amount is 0' };
+
+    const voucherRes = postVoucher({
+      entryNumber: `DEP-${asset.code}-${Date.now().toString().substring(8)}`,
+      date: new Date().toISOString().substring(0, 10),
+      voucherType: 'Depreciation Entry',
+      sourceModule: 'Fixed Assets',
+      description: `Annual Depreciation write-off for ${asset.name} (${asset.code}) at ${asset.depreciationRate}%`,
+      reference: asset.code,
+      createdBy: currentUser.name,
+      isPosted: true,
+      lines: [
+        {
+          accountId: asset.depreciationAccountId || 'acc-5080',
+          accountCode: '5080',
+          accountName: 'Depreciation Expense',
+          debit: deprAmt,
+          credit: 0,
+          particulars: `Depreciation on ${asset.name}`
+        },
+        {
+          accountId: 'acc-1590',
+          accountCode: '1590',
+          accountName: 'Accumulated Depreciation (Contra-Asset)',
+          debit: 0,
+          credit: deprAmt,
+          particulars: `Accumulated depreciation reserve for ${asset.name}`
+        }
+      ]
+    });
+
+    if (voucherRes.error || !voucherRes.entry) return { error: voucherRes.error || 'Failed to post depreciation' };
+
+    setFixedAssets(prev => prev.map(a => {
+      if (a.id === assetId) {
+        const newAccum = a.accumulatedDepreciation + deprAmt;
+        const newNBV = Math.max(a.salvageValue, a.cost - newAccum);
+        return {
+          ...a,
+          accumulatedDepreciation: newAccum,
+          netBookValue: newNBV
+        };
+      }
+      return a;
+    }));
+
+    logAction('Ran Depreciation', 'Fixed Assets', `Depreciated ${asset.name} by NPR ${deprAmt.toLocaleString()}`);
+    return voucherRes.entry;
+  };
+
+  /**
+   * Universal Double-Entry Voucher Posting Engine
+   * Validates: Sum(Debit) === Sum(Credit)
+   */
+  const postVoucher = (voucherData: Omit<JournalEntry, 'id'>): { entry?: JournalEntry; error?: string } => {
+    const totalDebit = voucherData.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+    const totalCredit = voucherData.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+
+    const diff = Math.abs(Math.round((totalDebit - totalCredit) * 100) / 100);
+    if (diff > 0.05) {
+      return {
+        error: `Double-Entry Validation Failed: Total Debit (NPR ${totalDebit.toLocaleString()}) does not match Total Credit (NPR ${totalCredit.toLocaleString()}). Difference: NPR ${diff.toLocaleString()}`
+      };
+    }
+
+    const currentYear = new Date().getFullYear();
+    let prefix = 'JV';
+    if (voucherData.voucherType === 'Customer Receipt') prefix = 'REC';
+    else if (voucherData.voucherType === 'Supplier Payment') prefix = 'PAY';
+    else if (voucherData.voucherType === 'Expense Voucher') prefix = 'EXP';
+    else if (voucherData.voucherType === 'Contra / Transfer') prefix = 'CNTR';
+    else if (voucherData.voucherType === 'Sales Return' || voucherData.voucherType === 'Credit Note') prefix = 'CRN';
+    else if (voucherData.voucherType === 'Purchase Return' || voucherData.voucherType === 'Debit Note') prefix = 'DBN';
+    else if (voucherData.voucherType === 'Fixed Asset Purchase') prefix = 'AST';
+    else if (voucherData.voucherType === 'Depreciation Entry') prefix = 'DEP';
+    else if (voucherData.voucherType === 'Year-End Adjustment') prefix = 'ADJ';
+
+    const count = journalEntries.length + 1;
+    const entryNumber = voucherData.entryNumber || `${prefix}-${currentYear}-${String(count).padStart(4, '0')}`;
+
+    const newJE: JournalEntry = {
+      ...voucherData,
+      id: `je-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      entryNumber,
+      isPosted: true,
+      createdBy: voucherData.createdBy || currentUser.name
+    };
+
+    setJournalEntries(prev => {
+      const next = [newJE, ...prev];
+      saveJournalEntriesCloud(next);
+      return next;
+    });
+
+    // Update affected Account balances
+    setAccounts(prev => {
+      let currentAccounts = [...prev];
+
+      // Auto-create missing account heads if line specifies a code not in Chart of Accounts
+      newJE.lines.forEach(line => {
+        if (line.accountCode && !currentAccounts.some(a => a.code === line.accountCode)) {
+          const codePrefix = line.accountCode.substring(0, 1);
+          let category: Account['category'] = 'Assets';
+          let type = 'Current Asset';
+          if (codePrefix === '2') { category = 'Liabilities'; type = 'Current Liability'; }
+          else if (codePrefix === '3') { category = 'Equity'; type = 'Equity'; }
+          else if (codePrefix === '4') { category = 'Revenue'; type = 'Operating Revenue'; }
+          else if (codePrefix === '5') { category = 'Expenses'; type = 'Operating Expense'; }
+
+          currentAccounts.push({
+            id: line.accountId || `acc-${line.accountCode}`,
+            code: line.accountCode,
+            name: line.accountName || `Account ${line.accountCode}`,
+            category,
+            type,
+            balance: 0
+          });
+        }
+      });
+
+      const next = currentAccounts.map(acc => {
+        const matchingLines = newJE.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
+        if (matchingLines.length === 0) return acc;
+
+        let netDelta = 0;
+        matchingLines.forEach(l => {
+          if (acc.category === 'Assets' || acc.category === 'Expenses') {
+            netDelta += ((Number(l.debit) || 0) - (Number(l.credit) || 0));
+          } else {
+            netDelta += ((Number(l.credit) || 0) - (Number(l.debit) || 0));
+          }
+        });
+
+        return { ...acc, balance: acc.balance + netDelta };
+      });
+
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    logAction('Posted Accounting Voucher', 'Accounting Engine', `Posted ${newJE.voucherType || 'Voucher'} #${newJE.entryNumber}: Total NPR ${totalDebit.toLocaleString()}`);
+
+    return { entry: newJE };
+  };
+
+  /**
+   * Reversal Entry Generator for Audit Corrections
+   */
+  const reverseJournalEntry = (entryId: string, reason: string): JournalEntry | { error: string } => {
+    const target = journalEntries.find(j => j.id === entryId);
+    if (!target) return { error: 'Journal entry not found' };
+    if (target.isReversed) return { error: 'This journal entry has already been reversed.' };
+
+    const revJE = AccountingEngine.createReversalJournalEntry(target, reason, currentUser.name);
+
+    // Mark original as reversed
+    setJournalEntries(prev => {
+      const next = [
+        revJE,
+        ...prev.map(j => j.id === entryId ? { ...j, isReversed: true, reversalReason: reason, reversalOfId: revJE.id } : j)
+      ];
+      saveJournalEntriesCloud(next);
+      return next;
+    });
+
+    // Update account balances
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        const matchingLines = revJE.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
+        if (matchingLines.length === 0) return acc;
+
+        let netDelta = 0;
+        matchingLines.forEach(l => {
+          if (acc.category === 'Assets' || acc.category === 'Expenses') {
+            netDelta += ((Number(l.debit) || 0) - (Number(l.credit) || 0));
+          } else {
+            netDelta += ((Number(l.credit) || 0) - (Number(l.debit) || 0));
+          }
+        });
+
+        return { ...acc, balance: acc.balance + netDelta };
+      });
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    logAction('Reversed Journal Entry', 'Audit & Control', `Reversed #${target.entryNumber} with Reversal Voucher #${revJE.entryNumber}. Reason: ${reason}`);
+
+    return revJE;
+  };
+
+  const resetAccountsToDefault = () => {
+    setAccounts(DEFAULT_CHART_OF_ACCOUNTS);
+    setCostCenters(DEFAULT_COST_CENTERS);
+    setFiscalYears(DEFAULT_FISCAL_YEARS);
+    setFixedAssets(DEFAULT_FIXED_ASSETS);
+    saveAccountsCloud(DEFAULT_CHART_OF_ACCOUNTS);
+    logAction('Reset Chart of Accounts', 'Accounting Master', 'Restored standard Swiss/Nepal double-entry Chart of Accounts.');
+  };
+
+  // Accounts Management (Dynamic creation / alteration / removal)
   const addAccount = (accountData: Omit<Account, 'id' | 'balance'> & { initialBalance?: number }) => {
     const newAcc: Account = {
       id: `acc-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
       code: accountData.code,
       name: accountData.name,
       category: accountData.category,
+      group: accountData.group,
       type: accountData.type,
-      balance: accountData.initialBalance || 0
+      balance: accountData.initialBalance || 0,
+      openingBalance: accountData.initialBalance || 0,
+      description: accountData.description
     };
     setAccounts(prev => {
       const updated = [...prev, newAcc];
       saveAccountsCloud(updated);
       return updated;
     });
-    logAction('Added Account', 'Accounting', `Created new account [${newAcc.code}] ${newAcc.name} (${newAcc.category})`);
+    logAction('Added Account Head', 'Accounting Master', `Created new account head [${newAcc.code}] ${newAcc.name} (${newAcc.category})`);
     return newAcc;
   };
 
-  const deleteAccount = (id: string) => {
+  const updateAccount = (id: string, updatedData: Partial<Account>): Account | { error: string } => {
     const target = accounts.find(a => a.id === id || a.code === id);
-    if (!target) return;
+    if (!target) return { error: 'Account not found' };
+
+    // Check if new code conflicts with another account
+    if (updatedData.code && updatedData.code !== target.code) {
+      const codeExists = accounts.some(a => a.id !== target.id && a.code === updatedData.code);
+      if (codeExists) {
+        return { error: `Account code "${updatedData.code}" is already in use by another account.` };
+      }
+    }
+
+    const oldCode = target.code;
+    const newCode = updatedData.code || target.code;
+    const oldName = target.name;
+    const newName = updatedData.name || target.name;
+
+    // Calculate balance adjustment if opening balance changed
+    let newBalance = target.balance;
+    if (updatedData.openingBalance !== undefined && updatedData.openingBalance !== target.openingBalance) {
+      const deltaOpening = (updatedData.openingBalance || 0) - (target.openingBalance || 0);
+      newBalance = (updatedData.balance !== undefined ? updatedData.balance : target.balance + deltaOpening);
+    } else if (updatedData.balance !== undefined) {
+      newBalance = updatedData.balance;
+    }
+
+    const modifiedAcc: Account = {
+      ...target,
+      ...updatedData,
+      id: target.id,
+      code: newCode,
+      name: newName,
+      balance: newBalance
+    };
+
+    // Update Accounts state and persist
     setAccounts(prev => {
-      const updated = prev.filter(a => a.id !== id && a.code !== id);
+      const next = prev.map(a => a.id === target.id ? modifiedAcc : a);
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    // If code or name changed, propagate to all historical journal entry lines
+    if (oldCode !== newCode || oldName !== newName) {
+      setJournalEntries(prev => {
+        const next = prev.map(je => ({
+          ...je,
+          lines: je.lines?.map(line => {
+            if (line.accountId === target.id || line.accountCode === oldCode) {
+              return {
+                ...line,
+                accountCode: newCode,
+                accountName: newName
+              };
+            }
+            return line;
+          })
+        }));
+        saveJournalEntriesCloud(next);
+        return next;
+      });
+    }
+
+    logAction('Altered Account Head', 'Accounting Master', `Modified account head [${oldCode} -> ${newCode}] "${oldName}" -> "${newName}" (${modifiedAcc.category}, Group: ${modifiedAcc.group || 'N/A'})`);
+    return modifiedAcc;
+  };
+
+  const deleteAccount = (id: string, force: boolean = false): { success: boolean; error?: string } => {
+    const target = accounts.find(a => a.id === id || a.code === id);
+    if (!target) return { success: false, error: 'Account not found' };
+
+    // Check if journal entries exist for this account
+    const referencingEntries = journalEntries.filter(je =>
+      je.lines?.some(l => l.accountId === target.id || l.accountCode === target.code)
+    );
+
+    if (referencingEntries.length > 0 && !force) {
+      return {
+        success: false,
+        error: `Cannot delete account [${target.code}] "${target.name}" because it is referenced in ${referencingEntries.length} journal entry voucher(s). You can edit/rename it or delete linked vouchers first.`
+      };
+    }
+
+    setAccounts(prev => {
+      const updated = prev.filter(a => a.id !== target.id && a.code !== target.code);
       saveAccountsCloud(updated);
       return updated;
     });
-    logAction('Deleted Account', 'Accounting', `Removed account [${target.code}] ${target.name}`);
+
+    logAction('Deleted Account Head', 'Accounting Master', `Removed account head [${target.code}] ${target.name} (${target.category})`);
+    return { success: true };
   };
 
   // Sync accounts and journal entries
@@ -2115,18 +2532,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setUsers(INITIAL_USERS);
     setCurrentUser(INITIAL_USERS[0]);
     setProducts(INITIAL_PRODUCTS);
-    setCustomers(INITIAL_CUSTOMERS);
+    setCustomers([]);
     setSuppliers(INITIAL_SUPPLIERS);
-    setSales(INITIAL_SALES);
+    setSales([]);
     setPurchases([]);
-    setWarranties(INITIAL_WARRANTIES);
+    setWarranties([]);
+    setClaims([]);
+    setReplacements([]);
+    setExtensions([]);
+    setVerificationLogs([]);
+    setFixedAssets([]);
     setAccounts(INITIAL_ACCOUNTS);
-    setJournalEntries(INITIAL_JOURNAL_ENTRIES);
+    setJournalEntries([]);
     setBanners(INITIAL_CMS_BANNERS);
     setVideos(INITIAL_CMS_VIDEOS);
-    setAuditLogs(INITIAL_AUDIT_LOGS);
+    setAuditLogs([]);
     localStorage.clear();
-    logAction('System Reset', 'System', 'Reset ERP database to default demo dataset.');
+    logAction('System Reset', 'System', 'Cleared all dummy records and reset system to clean production state.');
   };
 
   const globalSearch = (query: string) => {
@@ -2197,10 +2619,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         deletePurchase,
         accounts,
         addAccount,
+        updateAccount,
         deleteAccount,
         journalEntries,
         addJournalEntry,
+        postVoucher,
+        reverseJournalEntry,
         syncJournalEntriesAndAccounts,
+        fiscalYears,
+        addFiscalYear,
+        closeFiscalYear,
+        costCenters,
+        addCostCenter,
+        fixedAssets,
+        addFixedAsset,
+        runAssetDepreciation,
+        resetAccountsToDefault,
         homepageContent,
         updateHomepageContent,
         banners,
