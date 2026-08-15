@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText, Layers, Wrench, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react';
+import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText, Layers, Wrench, CheckCircle2, ShieldAlert, AlertCircle, Eye, ExternalLink } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useApp } from '../../context/AppContext';
 import { BrandStockVisualization } from './BrandStockVisualization';
@@ -11,6 +11,7 @@ interface AdminDashboardProps {
   onNavigateToSales?: () => void;
   onNavigateToInventory?: () => void;
   onNavigateToCMS?: () => void;
+  onExitERP?: () => void;
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -18,7 +19,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   onNavigateToAccounting,
   onNavigateToSales,
   onNavigateToInventory,
-  onNavigateToCMS
+  onNavigateToCMS,
+  onExitERP
 }) => {
   const { sales, products, warranties, customers, auditLogs, currentUser, homepageContent, updateHomepageContent } = useApp();
   const [maintenanceSavedNotice, setMaintenanceSavedNotice] = useState(false);
@@ -116,12 +118,25 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+          <div className="flex flex-wrap items-center gap-3 shrink-0 self-end md:self-center">
             {maintenanceSavedNotice && (
               <span className="text-xs text-emerald-400 font-mono flex items-center gap-1 animate-pulse">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Saved Live
               </span>
             )}
+
+            {isMaintenanceActive && onExitERP && (
+              <button
+                type="button"
+                onClick={onExitERP}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+                title="Exit ERP to see the public visitor maintenance page"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Preview Maintenance Screen</span>
+              </button>
+            )}
+
             <div className="flex items-center gap-2 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800">
               <button
                 type="button"

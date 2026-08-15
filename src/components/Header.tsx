@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Watch, ShoppingBag, Radio, Sparkles, UserCheck, Menu, X, Phone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
+import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
 
 interface HeaderProps {
   activeTab: string;
@@ -91,31 +92,31 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Social quick icons */}
             <div className="flex items-center gap-2 border-r border-amber-500/20 pr-3 mr-1">
               <a
-                href="https://tiktok.com"
+                href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
                 target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs text-zinc-300 hover:text-amber-400 hover:border-amber-500/40 transition-colors"
-                title="TikTok"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-[#000000] hover:border-pink-500/50 transition-all shadow-sm group"
+                title="Follow us on TikTok"
               >
-                🎵
+                <TikTokIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
               </a>
               <a
-                href="https://instagram.com"
+                href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
                 target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs text-zinc-300 hover:text-amber-400 hover:border-amber-500/40 transition-colors"
-                title="Instagram"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-pink-400 hover:border-pink-500/50 hover:bg-gradient-to-tr hover:from-amber-500/20 hover:to-pink-500/20 transition-all shadow-sm group"
+                title="Follow us on Instagram"
               >
-                📸
+                <InstagramIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
               </a>
               <a
-                href="https://facebook.com"
+                href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
                 target="_blank"
-                rel="noreferrer"
-                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-xs text-zinc-300 hover:text-amber-400 hover:border-amber-500/40 transition-colors"
-                title="Facebook"
+                rel="noopener noreferrer"
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-blue-400 hover:border-blue-500/50 hover:bg-blue-950/40 transition-all shadow-sm group"
+                title="Visit our Facebook Page"
               >
-                💬
+                <FacebookIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
               </a>
             </div>
 

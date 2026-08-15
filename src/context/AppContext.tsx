@@ -813,11 +813,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateHomepageContent = (updated: Partial<CMSHomepageContent>) => {
-    const nextContent = { ...homepageContent, ...updated };
-    setHomepageContent(nextContent);
-    // Sync to Firestore
-    setDoc(doc(db, 'cms_content', 'homepage'), nextContent, { merge: true }).catch(console.error);
-    logAction('Updated Homepage CMS', 'Marketing CMS', 'Updated homepage hero, text, buttons and social links.');
+    setHomepageContent(prev => {
+      const nextContent = { ...prev, ...updated };
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(nextContent));
+      if (!isQuotaExceededRef.current) {
+        setDoc(doc(db, 'cms_content', 'homepage'), nextContent, { merge: true }).catch(err => {
+          console.error('Firestore homepage sync error:', err);
+        });
+      }
+      return nextContent;
+    });
+    logAction('Updated Homepage CMS', 'Marketing CMS', `Updated homepage settings (Maintenance Mode: ${updated.maintenanceMode !== undefined ? (updated.maintenanceMode ? 'Enabled' : 'Disabled') : 'Unchanged'})`);
   };
 
   const syncBannersToFirestore = async (bannersList: CMSBanner[]) => {

@@ -1,8 +1,9 @@
 import React from 'react';
-import { ShieldCheck, MessageSquare, Phone, Mail, Instagram, Lock, Clock, Sparkles, MapPin } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Phone, Mail, Lock, Clock, Sparkles, MapPin } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 import { openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../utils/whatsappService';
+import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
 
 interface MaintenancePageProps {
   setIsAdminOpen: (open: boolean) => void;
@@ -127,38 +128,38 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({ setIsAdminOpen
           </div>
 
           {/* Social Links */}
-          <div className="flex flex-wrap items-center justify-center gap-4 pt-2 border-t border-zinc-800/80 text-xs">
-            <span className="text-zinc-400 font-mono text-xs">Social Channels:</span>
-            {homepageContent.tiktokLink && (
-              <a
-                href={homepageContent.tiktokLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-amber-300 border border-zinc-800 transition-all font-mono"
-              >
-                TikTok Store
-              </a>
-            )}
-            {homepageContent.instagramLink && (
-              <a
-                href={homepageContent.instagramLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-amber-300 border border-zinc-800 transition-all font-mono"
-              >
-                Instagram
-              </a>
-            )}
-            {homepageContent.facebookLink && (
-              <a
-                href={homepageContent.facebookLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-amber-300 border border-zinc-800 transition-all font-mono"
-              >
-                Facebook Page
-              </a>
-            )}
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-3 border-t border-zinc-800/80 text-xs">
+            <span className="text-zinc-400 font-mono text-xs">Official Social Channels:</span>
+            <a
+              href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-black text-zinc-200 hover:text-white border border-zinc-800 hover:border-pink-500/50 transition-all font-mono flex items-center gap-2 group"
+              title="Official TikTok Page"
+            >
+              <TikTokIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-white group-hover:scale-110 transition-transform" />
+              <span>TikTok</span>
+            </a>
+            <a
+              href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-pink-400 border border-zinc-800 hover:border-pink-500/50 transition-all font-mono flex items-center gap-2 group"
+              title="Official Instagram Page"
+            >
+              <InstagramIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-pink-400 group-hover:scale-110 transition-transform" />
+              <span>Instagram</span>
+            </a>
+            <a
+              href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-blue-400 border border-zinc-800 hover:border-blue-500/50 transition-all font-mono flex items-center gap-2 group"
+              title="Official Facebook Page"
+            >
+              <FacebookIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-blue-400 group-hover:scale-110 transition-transform" />
+              <span>Facebook</span>
+            </a>
           </div>
 
         </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Video, Image as ImageIcon, Plus, Trash2, ToggleLeft, ToggleRight, Sparkles, Upload, Layout, Eye, Save, CheckCircle2, MapPin, Phone, RotateCcw, FileText, Globe, Link as LinkIcon } from 'lucide-react';
+import { Video, Image as ImageIcon, Plus, Trash2, ToggleLeft, ToggleRight, Sparkles, Upload, Layout, Eye, Save, CheckCircle2, MapPin, Phone, RotateCcw, FileText, Globe, Link as LinkIcon, ExternalLink } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { CMSVideo, FooterLinkItem } from '../../types';
 import { compressImageFile } from '../../utils/imageCompressor';
+import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from '../SocialIcons';
 
 export const MarketingCMS: React.FC = () => {
   const { videos, updateHeroVideo, banners, addBanner, toggleBannerActive, deleteBanner, homepageContent, updateHomepageContent, currentUser } = useApp();
@@ -322,8 +323,12 @@ export const MarketingCMS: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setContentForm({ ...contentForm, maintenanceMode: !contentForm.maintenanceMode })}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    onClick={() => {
+                      const nextMode = !contentForm.maintenanceMode;
+                      setContentForm(prev => ({ ...prev, maintenanceMode: nextMode }));
+                      updateHomepageContent({ maintenanceMode: nextMode });
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-sm ${
                       contentForm.maintenanceMode 
                         ? 'bg-amber-500 text-zinc-950' 
                         : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-700'
@@ -475,6 +480,116 @@ export const MarketingCMS: React.FC = () => {
                 onChange={(e) => setContentForm({ ...contentForm, socialChannelsText: e.target.value })}
                 className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-amber-400 font-mono"
               />
+            </div>
+
+            {/* OFFICIAL SOCIAL CHANNELS & DIRECT URLS */}
+            <div className="p-4 bg-zinc-950/80 border border-amber-500/30 rounded-xl space-y-4">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-amber-400" />
+                  <span className="text-amber-200 font-serif font-bold text-sm">Official Social Channels & Direct URLs</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setContentForm({
+                    ...contentForm,
+                    tiktokLink: OFFICIAL_TIKTOK_URL,
+                    instagramLink: OFFICIAL_INSTAGRAM_URL,
+                    facebookLink: OFFICIAL_FACEBOOK_URL
+                  })}
+                  className="px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-amber-300 text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Reset to official brand profile links"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Reset Official Links</span>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {/* TikTok URL */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-zinc-300 font-mono text-xs flex items-center gap-1.5 font-bold">
+                      <span className="w-5 h-5 rounded bg-zinc-900 flex items-center justify-center text-white">
+                        <TikTokIcon className="w-3.5 h-3.5" />
+                      </span>
+                      <span>TikTok Official Page URL:</span>
+                    </label>
+                    <a
+                      href={contentForm.tiktokLink || OFFICIAL_TIKTOK_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    >
+                      <span>Test Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <input
+                    type="url"
+                    value={contentForm.tiktokLink || ''}
+                    onChange={(e) => setContentForm({ ...contentForm, tiktokLink: e.target.value })}
+                    placeholder={OFFICIAL_TIKTOK_URL}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-200 text-xs font-mono"
+                  />
+                </div>
+
+                {/* Instagram URL */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-zinc-300 font-mono text-xs flex items-center gap-1.5 font-bold">
+                      <span className="w-5 h-5 rounded bg-zinc-900 flex items-center justify-center text-pink-400">
+                        <InstagramIcon className="w-3.5 h-3.5" />
+                      </span>
+                      <span>Instagram Official Page URL:</span>
+                    </label>
+                    <a
+                      href={contentForm.instagramLink || OFFICIAL_INSTAGRAM_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    >
+                      <span>Test Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <input
+                    type="url"
+                    value={contentForm.instagramLink || ''}
+                    onChange={(e) => setContentForm({ ...contentForm, instagramLink: e.target.value })}
+                    placeholder={OFFICIAL_INSTAGRAM_URL}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-200 text-xs font-mono"
+                  />
+                </div>
+
+                {/* Facebook URL */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-zinc-300 font-mono text-xs flex items-center gap-1.5 font-bold">
+                      <span className="w-5 h-5 rounded bg-zinc-900 flex items-center justify-center text-blue-400">
+                        <FacebookIcon className="w-3.5 h-3.5" />
+                      </span>
+                      <span>Facebook Official Page URL:</span>
+                    </label>
+                    <a
+                      href={contentForm.facebookLink || OFFICIAL_FACEBOOK_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    >
+                      <span>Test Link</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                  <input
+                    type="url"
+                    value={contentForm.facebookLink || ''}
+                    onChange={(e) => setContentForm({ ...contentForm, facebookLink: e.target.value })}
+                    placeholder={OFFICIAL_FACEBOOK_URL}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-200 text-xs font-mono"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* DYNAMIC SHOWROOM BOUTIQUE CARD CMS */}

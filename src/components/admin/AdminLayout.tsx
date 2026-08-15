@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, ShoppingBag, Package, Layers, ShieldCheck, Calculator, Users, Sparkles, BarChart3, UserCheck, ShieldAlert, Search, X, Globe } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Layers, ShieldCheck, Calculator, Users, Sparkles, BarChart3, UserCheck, ShieldAlert, Search, X, Globe, Eye, Wrench, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AdminDashboard } from './AdminDashboard';
 import { SalesModule } from './SalesModule';
@@ -19,7 +19,7 @@ interface AdminLayoutProps {
 }
 
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
-  const { currentUser, setCurrentUser, users, globalSearch, loginStaffUser } = useApp();
+  const { currentUser, setCurrentUser, users, globalSearch, loginStaffUser, homepageContent, updateHomepageContent } = useApp();
   const [adminTab, setAdminTab] = useState<
     'dashboard' | 'sales' | 'purchases' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit' | 'domain'
   >('dashboard');
@@ -244,13 +244,24 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
           </nav>
         </div>
 
-        {/* Return to Showroom */}
-        <div className="pt-4 border-t border-zinc-800">
+        {/* Return to Showroom / Maintenance Page */}
+        <div className="pt-4 border-t border-zinc-800 space-y-2">
           <button
             onClick={handleExitShowroom}
-            className="w-full py-2.5 px-3 rounded-xl bg-zinc-900 border border-amber-500/30 text-amber-300 font-bold text-xs hover:bg-amber-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+            className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              homepageContent.maintenanceMode 
+                ? 'bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-300 shadow-lg shadow-amber-500/10'
+                : 'bg-zinc-900 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20'
+            }`}
           >
-            <span>Exit ERP to Store Showroom</span>
+            {homepageContent.maintenanceMode ? (
+              <>
+                <Eye className="w-3.5 h-3.5 text-amber-400" />
+                <span>Exit ERP to Maintenance Page</span>
+              </>
+            ) : (
+              <span>Exit ERP to Live Showroom</span>
+            )}
           </button>
         </div>
       </aside>
@@ -258,6 +269,47 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
       {/* MAIN CONTENT AREA */}
       <main className="flex-1 p-4 sm:p-8 space-y-6 overflow-y-auto">
         
+        {/* UNDER MAINTENANCE PUBLIC BANNER ALERT */}
+        {homepageContent.maintenanceMode && (
+          <div className="bg-amber-950/70 border-2 border-amber-500/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-200 text-xs shadow-2xl backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center shrink-0">
+                <Wrench className="w-5 h-5 animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-serif text-white font-bold text-sm">
+                    Store Website Under Maintenance Mode is LIVE
+                  </span>
+                  <span className="bg-amber-500 text-zinc-950 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full uppercase">
+                    Active
+                  </span>
+                </div>
+                <p className="text-zinc-300 text-xs mt-0.5">
+                  Public visitors to your website are currently seeing the luxury Under Maintenance notice with WhatsApp inquiries. Staff ERP remains unlocked.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+              <button
+                type="button"
+                onClick={handleExitShowroom}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/50 font-bold font-mono text-xs cursor-pointer flex items-center gap-1.5 transition-all shadow-sm"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>Preview Public View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateHomepageContent({ maintenanceMode: false })}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold text-xs cursor-pointer transition-all shadow-md"
+              >
+                Disable (Go Live)
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Top Global Search Bar */}
         <div className="bg-zinc-900/90 border border-amber-500/30 rounded-2xl p-3 relative">
           <div className="relative">
@@ -337,6 +389,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
             onNavigateToSales={() => setAdminTab('sales')}
             onNavigateToInventory={() => setAdminTab('inventory')}
             onNavigateToCMS={() => setAdminTab('cms')}
+            onExitERP={handleExitShowroom}
           />
         )}
         {adminTab === 'sales' && <SalesModule />}

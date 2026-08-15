@@ -3,6 +3,7 @@ import { ShieldCheck, ArrowUpRight, X, FileText } from 'lucide-react';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 import { useApp } from '../context/AppContext';
 import { FooterLinkItem } from '../types';
+import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
@@ -60,35 +61,50 @@ export const Footer: React.FC<FooterProps> = () => {
             <ul className="space-y-2.5 text-xs">
               <li>
                 <a
-                  href={homepageContent.tiktokLink || 'https://tiktok.com'}
+                  href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
                   target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between p-2 rounded bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/40 text-zinc-300 hover:text-amber-300 transition-colors"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-pink-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-white transition-all group"
                 >
-                  <span className="flex items-center gap-2">🎵 TikTok (@watchstorenepal_official)</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="flex items-center gap-2.5 font-medium">
+                    <span className="w-6 h-6 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-pink-500/50 group-hover:text-white transition-colors">
+                      <TikTokIcon className="w-3.5 h-3.5" />
+                    </span>
+                    <span>TikTok (@kalpa9741)</span>
+                  </span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </a>
               </li>
               <li>
                 <a
-                  href={homepageContent.instagramLink || 'https://instagram.com'}
+                  href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
                   target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between p-2 rounded bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/40 text-zinc-300 hover:text-amber-300 transition-colors"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-pink-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-pink-300 transition-all group"
                 >
-                  <span className="flex items-center gap-2">📸 Instagram (@premiumwatchstore.nepal)</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="flex items-center gap-2.5 font-medium">
+                    <span className="w-6 h-6 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-pink-500/50 group-hover:text-pink-400 transition-colors">
+                      <InstagramIcon className="w-3.5 h-3.5" />
+                    </span>
+                    <span>Instagram (@kalpa_watch)</span>
+                  </span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </a>
               </li>
               <li>
                 <a
-                  href={homepageContent.facebookLink || 'https://facebook.com'}
+                  href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
                   target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between p-2 rounded bg-zinc-900/60 border border-zinc-800/80 hover:border-amber-500/40 text-zinc-300 hover:text-amber-300 transition-colors"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-blue-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-blue-300 transition-all group"
                 >
-                  <span className="flex items-center gap-2">💬 Facebook Messenger</span>
-                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="flex items-center gap-2.5 font-medium">
+                    <span className="w-6 h-6 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-blue-500/50 group-hover:text-blue-400 transition-colors">
+                      <FacebookIcon className="w-3.5 h-3.5" />
+                    </span>
+                    <span>Facebook Page (कल्प Luxury)</span>
+                  </span>
+                  <ArrowUpRight className="w-3.5 h-3.5 text-amber-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
                 </a>
               </li>
             </ul>
