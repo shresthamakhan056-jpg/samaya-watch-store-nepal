@@ -124,7 +124,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
     type: 'Fixed Asset',
     openingBalance: 0,
     balance: 0,
-    description: 'Custom luxury velvet watch display cases, glass counters and boutique lighting.',
+    description: 'Custom luxury velvet watch display cases, glass counters and showroom lighting.',
     isSystem: false
   },
   {
@@ -224,7 +224,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
     type: 'Equity',
     openingBalance: 0,
     balance: 0,
-    description: 'Initial and contributed capital from boutique founder.',
+    description: 'Initial and contributed capital from founder.',
     isSystem: true
   },
   {
@@ -342,13 +342,13 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
   {
     id: 'acc-5050',
     code: '5050',
-    name: 'Showroom Rent & Boutique Lease',
+    name: 'Showroom Rent & Store Lease',
     category: 'Expenses',
     group: 'Administrative & General Expenses',
     type: 'Expenses',
     openingBalance: 0,
     balance: 0,
-    description: 'Monthly lease for Durbar Marg flagship boutique showroom.',
+    description: 'Monthly lease for Durbar Marg flagship showroom.',
     isSystem: false
   },
   {
@@ -372,7 +372,7 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
     type: 'Expenses',
     openingBalance: 0,
     balance: 0,
-    description: 'Electricity backup (NEA), Wi-Fi, air conditioning, and boutique upkeep.',
+    description: 'Electricity backup (NEA), Wi-Fi, air conditioning, and showroom upkeep.',
     isSystem: false
   },
   {

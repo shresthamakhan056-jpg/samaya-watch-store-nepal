@@ -160,6 +160,8 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
                       alt={watch.model}
                       loading="lazy"
                       decoding="async"
+                      referrerPolicy="no-referrer"
+                      crossOrigin="anonymous"
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
                       }}
@@ -227,6 +229,8 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
                     alt={watch.model}
                     loading="lazy"
                     decoding="async"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
                     onError={(e) => {
                       (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
                     }}

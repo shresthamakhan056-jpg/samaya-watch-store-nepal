@@ -1,13 +1,14 @@
 /**
  * Utility to compress base64 images or Image files using HTML5 Canvas.
- * Reduces image dimensions and JPEG quality to ensure payload size remains well under Firestore's 1MB single document limit.
+ * Optimized for ultra-sharp, high-resolution luxury timepiece photography
+ * while keeping payload sizes under Firestore and localStorage quotas.
  */
 
 export function compressImageDataUrl(
   dataUrl: string,
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.72
+  maxWidth = 1600,
+  maxHeight = 1600,
+  quality = 0.88
 ): Promise<string> {
   return new Promise((resolve) => {
     // If empty or not a data URL, return as is
@@ -15,8 +16,8 @@ export function compressImageDataUrl(
       return resolve(dataUrl);
     }
 
-    // If string length is already small (< 150,000 chars ~ 150KB), no need to compress
-    if (dataUrl.length < 150000) {
+    // If string length is already small (< 200,000 chars ~ 200KB), return as is for max clarity
+    if (dataUrl.length < 200000) {
       return resolve(dataUrl);
     }
 
@@ -41,18 +42,32 @@ export function compressImageDataUrl(
         canvas.width = width;
         canvas.height = height;
 
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext('2d', { alpha: true });
         if (!ctx) {
           return resolve(dataUrl);
         }
 
-        ctx.drawImage(img, 0, 0, width, height);
-        const compressed = canvas.toDataURL('image/jpeg', quality);
+        // Enable high quality image smoothing
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
 
-        // Return whichever is smaller
+        // Check if image is PNG with possible transparency
+        const isPng = dataUrl.startsWith('data:image/png');
+        if (!isPng) {
+          ctx.fillStyle = '#070709';
+          ctx.fillRect(0, 0, width, height);
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Use JPEG with high quality 0.88 or PNG
+        const outputMime = isPng ? 'image/png' : 'image/jpeg';
+        const compressed = canvas.toDataURL(outputMime, quality);
+
+        // Return whichever is smaller or if compressed is valid
         resolve(compressed.length < dataUrl.length ? compressed : dataUrl);
       } catch (err) {
-        console.warn('Canvas image compression failed, using original dataUrl:', err);
+        console.warn('Canvas image compression fallback, using original dataUrl:', err);
         resolve(dataUrl);
       }
     };
@@ -63,9 +78,9 @@ export function compressImageDataUrl(
 
 export function compressImageFile(
   file: File,
-  maxWidth = 1200,
-  maxHeight = 1200,
-  quality = 0.72
+  maxWidth = 1600,
+  maxHeight = 1600,
+  quality = 0.88
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -85,3 +100,4 @@ export function compressImageFile(
     reader.readAsDataURL(file);
   });
 }
+

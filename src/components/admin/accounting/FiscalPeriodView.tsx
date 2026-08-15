@@ -276,7 +276,7 @@ export const FiscalPeriodView: React.FC = () => {
                 <label className="block text-xs font-semibold text-slate-400 mb-1">Branch / Department Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. Pokhara Lakeside Boutique"
+                  placeholder="e.g. Pokhara Lakeside Showroom"
                   value={ccName}
                   onChange={e => setCcName(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white"

@@ -3,7 +3,7 @@ import { Search, ShieldCheck, CheckCircle2, AlertCircle, Phone, Watch, Sparkles,
 import { useApp } from '../context/AppContext';
 import { DigitalWarrantyCard } from './DigitalWarrantyCard';
 import { Warranty } from '../types';
-import { formatWarrantyVerificationRequestMessage, openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../utils/whatsappService';
+import { formatWarrantyVerificationRequestMessage, openWhatsApp, OFFICIAL_STORE_WHATSAPP } from '../utils/whatsappService';
 
 export const WarrantyPage: React.FC = () => {
   const { warranties, getWarrantyByIdOrMobile, getWarrantiesByMobile, logVerification, submitClaim, claims } = useApp();
@@ -56,7 +56,7 @@ export const WarrantyPage: React.FC = () => {
   const handleWhatsAppVerifyRequest = (searchVal?: string) => {
     const term = (searchVal || query || 'General Inquiry').trim();
     const msg = formatWarrantyVerificationRequestMessage(term);
-    openWhatsApp(OFFICIAL_BOUTIQUE_WHATSAPP, msg);
+    openWhatsApp(OFFICIAL_STORE_WHATSAPP, msg);
   };
 
   const handleSubmitPublicClaim = (e: React.FormEvent) => {
@@ -100,7 +100,7 @@ export const WarrantyPage: React.FC = () => {
         <div className="text-center space-y-3 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-mono uppercase tracking-widest shadow-inner">
             <ShieldCheck className="w-4 h-4 text-amber-400" />
-            <span>कल्प • Automated Digital Warranty Verification</span>
+            <span>कल्प • Verification: Registered Mobile & Warranty Number Only</span>
           </div>
 
           <h1 className="font-serif text-3xl sm:text-5xl font-bold text-amber-100 tracking-tight">
@@ -108,7 +108,7 @@ export const WarrantyPage: React.FC = () => {
           </h1>
 
           <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
-            Enter your 10-digit mobile number, Warranty ID, or Scan QR Code. Instantly retrieve official digital guarantees, submit service claims, and track live repairs.
+            Enter your 10-digit registered customer mobile number or official Warranty Number. Instantly retrieve authentic digital guarantee certificates, submit service claims, and track live repairs.
           </p>
         </div>
 
@@ -127,7 +127,7 @@ export const WarrantyPage: React.FC = () => {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Enter Mobile (e.g. 9823680863) or Warranty ID (WRN-2026-0101)..."
+                placeholder="Enter Registered Mobile Number (e.g. 9823680863) or Warranty Number (WRN-2026-0101)..."
                 className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 rounded-xl pl-12 pr-4 py-3.5 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono"
               />
             </div>
@@ -137,7 +137,7 @@ export const WarrantyPage: React.FC = () => {
               className="px-6 sm:px-8 py-3.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-zinc-950 font-bold text-xs sm:text-sm tracking-wider uppercase shadow-lg shadow-amber-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
             >
               <Search className="w-4 h-4" />
-              <span>Verify કल्प Record</span>
+              <span>Verify कल्प Record</span>
             </button>
 
             <button
@@ -153,7 +153,7 @@ export const WarrantyPage: React.FC = () => {
 
           {/* Quick Search Helper */}
           <div className="pt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 font-mono">
-            <span className="text-[11px] text-zinc-500">Search Format: Enter your 10-digit registered mobile number or Warranty Certificate ID (e.g. WRN-...).</span>
+            <span className="text-[11px] text-amber-400/90 font-semibold">🔒 Security Policy: Verification is permitted exclusively through your Registered Customer Mobile Number or Official Warranty Number.</span>
           </div>
         </div>
 
@@ -263,11 +263,15 @@ export const WarrantyPage: React.FC = () => {
                 <AlertCircle className="w-12 h-12 text-rose-400 mx-auto" />
                 <h3 className="font-serif text-xl font-bold text-rose-200">No Verified Warranty Record Found</h3>
                 <p className="text-xs text-zinc-400 max-w-md mx-auto">
-                  We could not locate any active sales invoice or warranty certificate matching query <strong className="text-amber-300 font-mono">"{query}"</strong>.
+                  We could not locate any active digital warranty certificate matching <strong className="text-amber-300 font-mono">"{query}"</strong>.
                 </p>
-                <p className="text-[11px] text-zinc-500 max-w-md mx-auto">
-                  If you recently acquired this timepiece from our store or require an authenticity check, please send an instant verification request to our horologist desk on WhatsApp.
-                </p>
+                <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl text-[11px] text-zinc-400 max-w-md mx-auto space-y-1 text-left">
+                  <div className="font-bold text-amber-400">⚠️ Verification Rules:</div>
+                  <ul className="list-disc list-inside space-y-0.5 text-zinc-300">
+                    <li>Verification is permitted <strong>only</strong> via <strong>Registered Mobile Number</strong> or official <strong>Warranty Number</strong> (e.g. WRN-2026-0101).</li>
+                    <li>Verification by serial numbers, invoice numbers, or other details is disabled for privacy and anti-counterfeiting security.</li>
+                  </ul>
+                </div>
                 <div className="pt-2">
                   <button
                     onClick={() => handleWhatsAppVerifyRequest(query)}

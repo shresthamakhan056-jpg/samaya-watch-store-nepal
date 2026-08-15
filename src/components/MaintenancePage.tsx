@@ -2,7 +2,8 @@ import React from 'react';
 import { ShieldCheck, MessageSquare, Phone, Mail, Lock, Clock, Sparkles, MapPin } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
-import { openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../utils/whatsappService';
+import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
+import { openWhatsApp, OFFICIAL_STORE_WHATSAPP } from '../utils/whatsappService';
 import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 
 interface MaintenancePageProps {
@@ -14,7 +15,7 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({ setIsAdminOpen
 
   const handleWhatsAppContact = () => {
     openWhatsApp(
-      OFFICIAL_BOUTIQUE_WHATSAPP,
+      OFFICIAL_STORE_WHATSAPP,
       'Namaste कल्प Watch Store, I would like to inquire about watch models, current orders, or service.'
     );
   };
@@ -30,10 +31,11 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({ setIsAdminOpen
       <header className="relative z-10 p-6 max-w-7xl mx-auto w-full flex items-center justify-between">
         <div className="flex items-center gap-3">
           <img
-            src={kalpaLogo}
+            src={kalpaLogo || KALPA_LOGO_DATA_URL}
             alt="कल्प Logo"
             className="w-12 h-12 rounded-full border-2 border-amber-500/40 object-cover shadow-lg shadow-amber-500/20"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }}
+            referrerPolicy="no-referrer"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }}
           />
           <div>
             <span className="font-serif text-xl font-bold tracking-widest text-amber-100 uppercase block">

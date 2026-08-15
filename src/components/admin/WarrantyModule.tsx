@@ -35,7 +35,7 @@ import {
   WarrantyExtension
 } from '../../types';
 import { exportWarrantyReport, exportWarrantyReportPDF } from '../../utils/reportExporter';
-import { formatWarrantyCertificateMessage, formatWarrantyClaimStatusMessage, openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../../utils/whatsappService';
+import { formatWarrantyCertificateMessage, formatWarrantyClaimStatusMessage, openWhatsApp, OFFICIAL_STORE_WHATSAPP } from '../../utils/whatsappService';
 
 export const WarrantyModule: React.FC = () => {
   const {
@@ -148,7 +148,7 @@ export const WarrantyModule: React.FC = () => {
       issue: serviceIssue,
       repairDetails: serviceDetails,
       technician: serviceTech,
-      remarks: 'Boutique Routine Inspection'
+      remarks: 'Showroom Routine Inspection'
     });
 
     setShowServiceModal(null);
@@ -899,7 +899,7 @@ export const WarrantyModule: React.FC = () => {
                 </span>
               </div>
               <p className="text-[11px] text-zinc-400">
-                Official Boutique WhatsApp Number: <strong className="text-amber-300 font-mono">+{OFFICIAL_BOUTIQUE_WHATSAPP}</strong>
+                Official WhatsApp Number: <strong className="text-amber-300 font-mono">+{OFFICIAL_STORE_WHATSAPP}</strong>
               </p>
               <div className="text-[10px] text-zinc-500">
                 Supports instantaneous customer estimate bill dispatches, warranty QR certificates, and live verification queries.
@@ -914,7 +914,7 @@ export const WarrantyModule: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#0F0F12] border border-amber-500/40 rounded-2xl max-w-md w-full text-white p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-              <h3 className="font-serif text-lg font-bold text-amber-100">Log Boutique Horologist Service</h3>
+              <h3 className="font-serif text-lg font-bold text-amber-100">Log Watch Horologist Service</h3>
               <button onClick={() => setShowServiceModal(null)} className="text-zinc-400">✕</button>
             </div>
 

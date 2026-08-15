@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Watch, ShoppingBag, Radio, Sparkles, UserCheck, Menu, X, Phone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
+import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
 import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 
 interface HeaderProps {
@@ -47,13 +48,13 @@ export const Header: React.FC<HeaderProps> = ({
             onClick={() => { setActiveTab('home'); setIsAdminOpen(false); }}
             className="flex items-center gap-3 text-left group cursor-pointer focus:outline-none"
           >
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-xl shadow-amber-900/40 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-xl shadow-amber-900/40 flex items-center justify-center group-hover:scale-105 transition-transform overflow-hidden shrink-0 border border-amber-400/40">
               <img 
-                src={kalpaLogo} 
+                src={kalpaLogo || KALPA_LOGO_DATA_URL} 
                 alt="कल्प Official Logo" 
                 className="w-full h-full object-cover rounded-full"
                 referrerPolicy="no-referrer"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }}
               />
             </div>
             <div>

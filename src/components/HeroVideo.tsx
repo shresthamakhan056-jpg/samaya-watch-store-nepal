@@ -2,18 +2,44 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
   Volume2, VolumeX, ShieldCheck, ChevronRight, Sparkles, ArrowRight, 
   ChevronLeft, Watch, Search, MapPin, Phone, CheckCircle2, 
-  ExternalLink
+  ExternalLink, ShoppingBag, Eye, Star
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Product, Warranty } from '../types';
 import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
+import kalpaLogo from '../assets/kalpa_logo.jpg';
+import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
 
 interface HeroVideoProps {
   setActiveTab: (tab: string) => void;
   onOrderWatch?: (product: Product) => void;
 }
 
-export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
+const DEFAULT_HIGH_RES_BANNERS = [
+  {
+    id: 'def-banner-1',
+    title: 'Swiss Automatic Chronograph Masterpiece',
+    subtitle: 'Precision Co-Axial Escapement with Sapphire Crystal & 100M Water Resistance',
+    imageUrl: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1600&auto=format&fit=crop',
+    active: true
+  },
+  {
+    id: 'def-banner-2',
+    title: 'Executive Rose Gold & Emerald Dial Edition',
+    subtitle: 'Crafted for the Discerning Collector with Automated Digital QR Warranty',
+    imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop',
+    active: true
+  },
+  {
+    id: 'def-banner-3',
+    title: 'Horology Elegance • Certified Nepal Importer',
+    subtitle: 'Direct Showroom Sourcing in Kathmandu with Immutable ERP Authentication',
+    imageUrl: 'https://images.unsplash.com/photo-1547996160-71dfa6358462?q=80&w=1600&auto=format&fit=crop',
+    active: true
+  }
+];
+
+export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch }) => {
   const { products, banners, videos, homepageContent, getWarrantyByIdOrMobile } = useApp();
   const [isMuted, setIsMuted] = useState(true);
   const [activeBannerIdx, setActiveBannerIdx] = useState(0);
@@ -25,7 +51,8 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
   const [quickWarrantyResult, setQuickWarrantyResult] = useState<Warranty | null | 'not_found'>(null);
 
   const currentVideoUrl = videos[0]?.videoUrl || homepageContent.heroVideoUrl;
-  const activeBanners = banners.filter(b => b.active);
+  const configuredBanners = banners.filter(b => b.active);
+  const activeBanners = configuredBanners.length > 0 ? configuredBanners : DEFAULT_HIGH_RES_BANNERS;
 
   // Auto-play banner slide carousel
   useEffect(() => {
@@ -50,13 +77,16 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
     setQuickWarrantyResult(result || 'not_found');
   };
 
+  const featuredProducts = products.filter(p => p.isFeatured || p.status === 'In Stock').slice(0, 8);
+  const displayProducts = featuredProducts.length > 0 ? featuredProducts : products.slice(0, 8);
+
   return (
     <div className="bg-[#070709] text-white selection:bg-amber-500 selection:text-black">
       
       {/* 1. CINEMATIC FULLSCREEN HERO VIDEO & HEADLINE */}
-      <div className="relative w-full h-[90vh] min-h-[620px] overflow-hidden flex items-center justify-center border-b border-amber-500/20">
+      <div className="relative w-full min-h-[640px] lg:min-h-[750px] overflow-hidden flex items-center justify-center border-b border-amber-500/20 py-16">
         
-        {/* Background Video / Fallback Image */}
+        {/* Background Video / Fallback Image with vibrant high clarity */}
         {!videoError ? (
           <video
             ref={videoRef}
@@ -67,7 +97,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
             playsInline
             onError={() => setVideoError(true)}
             poster="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop"
-            className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-[0.7] contrast-125 transition-transform duration-1000"
+            className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-[0.82] contrast-110 transition-transform duration-1000"
           >
             <source src={currentVideoUrl} type="video/mp4" onError={() => setVideoError(true)} />
           </video>
@@ -75,18 +105,20 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
           <img
             src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop"
             alt="Showroom Hero"
-            className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-[0.7] contrast-125"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-[0.82] contrast-110"
           />
         )}
 
-        {/* Dark Luxury Vignette & Radial Glow */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#070709] via-[#070709]/50 to-black/80" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent pointer-events-none" />
+        {/* Crisp Luxury Vignette & Radial Glow */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#070709] via-[#070709]/60 to-black/70" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/15 via-transparent to-transparent pointer-events-none" />
 
         {/* Audio Mute/Unmute Floating Button */}
         <button
           onClick={toggleMute}
-          className="absolute top-8 right-8 z-20 bg-zinc-950/80 border border-amber-500/40 text-amber-300 hover:text-amber-100 px-4 py-2 rounded-full text-xs font-mono font-semibold backdrop-blur-md flex items-center gap-2.5 transition-all cursor-pointer shadow-2xl hover:border-amber-400 hover:scale-105"
+          className="absolute top-6 right-6 z-20 bg-zinc-950/85 border border-amber-500/40 text-amber-300 hover:text-amber-100 px-4 py-2 rounded-full text-xs font-mono font-semibold backdrop-blur-md flex items-center gap-2.5 transition-all cursor-pointer shadow-2xl hover:border-amber-400 hover:scale-105"
         >
           {isMuted ? (
             <>
@@ -103,9 +135,22 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
 
         {/* Hero Content Box */}
         <div className="relative z-10 max-w-5xl mx-auto px-6 text-center space-y-6">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs tracking-widest uppercase font-mono font-semibold backdrop-blur-md shadow-2xl shadow-amber-950/50">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>{homepageContent.certifiedImporterBadge}</span>
+          
+          {/* Prominent Official Store Logo Emblem */}
+          <div className="flex flex-col items-center justify-center gap-3">
+            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-1 shadow-2xl shadow-amber-500/30 flex items-center justify-center overflow-hidden border border-amber-300/50 backdrop-blur-md hover:scale-105 transition-transform duration-300">
+              <img
+                src={kalpaLogo || KALPA_LOGO_DATA_URL}
+                alt="कल्प Official Logo"
+                className="w-full h-full object-cover rounded-full"
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }}
+              />
+            </div>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs tracking-widest uppercase font-mono font-semibold backdrop-blur-md shadow-2xl shadow-amber-950/50">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>{homepageContent.certifiedImporterBadge}</span>
+            </div>
           </div>
 
           <h1 className="font-serif text-3xl sm:text-5xl lg:text-7xl font-bold tracking-tight text-zinc-100 leading-[1.15]">
@@ -187,7 +232,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
         </div>
       </div>
 
-      {/* PROMOTIONAL OFFERS & BANNERS CAROUSEL */}
+      {/* 2. PROMOTIONAL OFFERS & BANNERS CAROUSEL */}
       {activeBanners.length > 0 && (
         <div className="bg-[#0c0c0f] border-y border-amber-500/20 py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto space-y-6">
@@ -210,14 +255,34 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
               <img
                 src={activeBanners[activeBannerIdx]?.imageUrl}
                 alt={activeBanners[activeBannerIdx]?.title || 'Promotional Banner'}
+                referrerPolicy="no-referrer"
+                crossOrigin="anonymous"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop';
+                }}
                 className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-700"
               />
+
+              {/* Slide text banner overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-6 sm:p-10 pointer-events-none">
+                <span className="px-3 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold rounded-full w-fit mb-2">
+                  FEATURED LUXURY SPOTLIGHT
+                </span>
+                <h3 className="font-serif text-2xl sm:text-4xl font-bold text-white mb-2">
+                  {activeBanners[activeBannerIdx]?.title}
+                </h3>
+                {activeBanners[activeBannerIdx]?.subtitle && (
+                  <p className="text-xs sm:text-sm text-zinc-300 max-w-2xl">
+                    {activeBanners[activeBannerIdx]?.subtitle}
+                  </p>
+                )}
+              </div>
 
               {/* Navigation Controls Overlay */}
               {activeBanners.length > 1 && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-6 right-6 flex items-center gap-2 z-10 bg-black/80 border border-amber-500/40 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl"
+                  className="absolute bottom-6 right-6 flex items-center gap-2 z-10 bg-black/85 border border-amber-500/40 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl"
                 >
                   <button
                     onClick={() => setActiveBannerIdx(prev => (prev === 0 ? activeBanners.length - 1 : prev - 1))}
@@ -243,7 +308,109 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
         </div>
       )}
 
-      {/* 5. INSTANT DIGITAL WARRANTY QUICK LOOKUP WIDGET */}
+      {/* 3. FEATURED TIMEPIECES & UPLOADED WATCHES SHOWCASE */}
+      <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-zinc-800 pb-6">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 text-amber-300 text-xs font-mono uppercase tracking-widest border border-amber-500/30">
+              <Star className="w-3.5 h-3.5 text-amber-400" />
+              <span>Certified Stock Showcase</span>
+            </div>
+            <h2 className="font-serif text-2xl sm:text-4xl font-bold text-amber-100">
+              Featured Luxury Timepieces
+            </h2>
+            <p className="text-xs sm:text-sm text-zinc-400">
+              All timepieces include official digital QR warranty certificates registered directly upon dispatch.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setActiveTab('gallery')}
+            className="px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-amber-500/10 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-serif font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shrink-0"
+          >
+            <span>View All ({products.length}) Watches</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Product Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {displayProducts.map((watch) => (
+            <div
+              key={watch.id}
+              className="bg-zinc-900/90 rounded-2xl border border-zinc-800 hover:border-amber-500/50 p-4 transition-all duration-300 hover:shadow-2xl hover:shadow-amber-900/20 flex flex-col justify-between group"
+            >
+              <div>
+                {/* Watch Image container with high resolution rendering */}
+                <div className="relative aspect-square rounded-xl overflow-hidden bg-black mb-3.5 border border-zinc-800/80">
+                  <img
+                    src={watch.images && watch.images.length > 0 && watch.images[0] ? watch.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
+                    alt={watch.model}
+                    loading="lazy"
+                    decoding="async"
+                    referrerPolicy="no-referrer"
+                    crossOrigin="anonymous"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
+                    }}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  
+                  {/* Stock Status Badge */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                    <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow backdrop-blur-md ${
+                      watch.status === 'In Stock' ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40' :
+                      watch.status === 'Low Stock' ? 'bg-amber-500/25 text-amber-300 border border-amber-500/40' :
+                      'bg-rose-500/25 text-rose-300 border border-rose-500/40'
+                    }`}>
+                      {watch.status} ({watch.stock})
+                    </span>
+                  </div>
+
+                  {/* SKU Tag */}
+                  <span className="absolute bottom-2 left-2 bg-black/85 backdrop-blur-md border border-amber-500/30 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded">
+                    SKU: {watch.sku}
+                  </span>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-1">
+                  <div className="text-[11px] text-amber-400 font-mono uppercase tracking-wider font-semibold">
+                    {watch.brand}
+                  </div>
+                  <h3 className="font-serif text-base font-bold text-white line-clamp-1 group-hover:text-amber-200 transition-colors">
+                    {watch.model}
+                  </h3>
+                  <p className="text-xs text-zinc-400 line-clamp-2 leading-relaxed">
+                    {watch.description || `${watch.collection} • ${watch.movement} • ${watch.dialColor} Dial`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Price & Order Action */}
+              <div className="mt-4 pt-3 border-t border-zinc-800 space-y-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[11px] text-zinc-400 font-mono">Price (NPR)</span>
+                  <span className="text-lg font-serif font-bold text-amber-300">
+                    Rs. {Number(watch.sellingPrice).toLocaleString()}
+                  </span>
+                </div>
+
+                {/* Order Inquire Button */}
+                <button
+                  onClick={() => onOrderWatch ? onOrderWatch(watch) : setActiveTab('gallery')}
+                  className="w-full py-2.5 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-serif font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg hover:shadow-amber-500/20 active:scale-95"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Order / Inquire</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 4. INSTANT DIGITAL WARRANTY QUICK LOOKUP WIDGET */}
       <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
         <div className="bg-gradient-to-br from-zinc-950 via-zinc-900 to-amber-950/40 border border-amber-500/30 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden">
           <div className="max-w-3xl space-y-3">
@@ -255,7 +422,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
               Instant Digital QR Warranty Check
             </h2>
             <p className="text-xs sm:text-sm text-zinc-300">
-              Verify watch authenticity, original sales date, serial number, and active warranty status directly from our central ERP database.
+              Verify watch authenticity, original sales date, serial number, and active warranty status using your <strong>Registered Mobile Number</strong> or official <strong>Warranty Number</strong>.
             </p>
           </div>
 
@@ -264,7 +431,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
               <Search className="w-4 h-4 text-amber-400 absolute left-4 top-3.5" />
               <input
                 type="text"
-                placeholder="Enter Warranty ID (e.g. WRN-2026-0101) or Mobile..."
+                placeholder="Enter Registered Mobile (e.g. 9823680863) or Warranty Number (WRN-2026-0101)..."
                 value={quickWarrantyQuery}
                 onChange={(e) => {
                   setQuickWarrantyQuery(e.target.value);
@@ -286,7 +453,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
           {quickWarrantyResult === 'not_found' && (
             <div className="p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs space-y-1 max-w-2xl">
               <div className="font-bold font-mono">⚠️ No Active Warranty Certificate Found</div>
-              <p>Please double-check your Warranty ID or Mobile Number. You can also view sample card <span onClick={() => { setQuickWarrantyQuery('WRN-2026-0101'); handleQuickWarrantySearch({ preventDefault: () => {} } as any); }} className="underline font-mono text-amber-300 cursor-pointer">WRN-2026-0101</span>.</p>
+              <p>Verification is strictly restricted to your <strong>Registered Mobile Number</strong> or official <strong>Warranty Number</strong>. Please check and try again.</p>
             </div>
           )}
 
@@ -343,7 +510,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
         </div>
       </div>
 
-      {/* DURBAR MARG SHOWROOM LOCATION CARD */}
+      {/* 5. KATHMANDU SHOWROOM LOCATION CARD */}
       {(homepageContent.showroomEnabled ?? true) && (
         <div className="max-w-7xl mx-auto py-16 px-4 sm:px-6 lg:px-8">
           <div className="bg-zinc-950 border border-amber-500/30 rounded-3xl p-8 sm:p-12 flex flex-col md:flex-row items-center justify-between gap-8 shadow-2xl relative overflow-hidden">
@@ -392,3 +559,4 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
     </div>
   );
 };
+

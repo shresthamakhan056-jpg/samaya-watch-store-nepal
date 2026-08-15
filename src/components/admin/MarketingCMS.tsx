@@ -51,12 +51,6 @@ export const MarketingCMS: React.FC = () => {
       label: 'Terms of Service',
       active: true,
       content: 'All timepieces sold by Kalpa Luxury come with verified digital QR certificates. Returns or exchanges must be presented with the original digital warranty QR code and untouched security seal within 7 days of purchase.'
-    },
-    {
-      id: 'link-care-guide',
-      label: 'Swiss Watch Care Guide',
-      active: true,
-      content: 'Maintain your luxury automatic and quartz movements: Avoid exposure to strong magnetic fields, ensure screw-down crowns are fully engaged before water exposure, and service mechanical movements every 3-5 years.'
     }
   ];
 
@@ -208,7 +202,7 @@ export const MarketingCMS: React.FC = () => {
 
     setIsUploading(true);
     try {
-      const compressedDataUrl = await compressImageFile(file, 1200, 1200, 0.72);
+      const compressedDataUrl = await compressImageFile(file, 1600, 1600, 0.88);
       if (compressedDataUrl) {
         setBannerImage(compressedDataUrl);
       }
@@ -589,7 +583,7 @@ export const MarketingCMS: React.FC = () => {
               </div>
             </div>
 
-            {/* DYNAMIC SHOWROOM BOUTIQUE CARD CMS */}
+            {/* DYNAMIC SHOWROOM CARD CMS */}
             <div className="p-4 bg-zinc-950/80 border border-amber-500/30 rounded-xl space-y-3">
               <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
                 <div className="flex items-center gap-2">
@@ -829,12 +823,12 @@ export const MarketingCMS: React.FC = () => {
                 />
               </div>
 
-              {/* 3. Dynamic Footer Policy & Guide Links */}
+              {/* 3. Dynamic Footer Policy Links */}
               <div className="space-y-3 pt-2 border-t border-zinc-800">
                 <div className="flex items-center justify-between">
                   <label className="text-amber-300 font-serif font-bold text-xs flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-amber-400" />
-                    <span>3. Policy Links & Swiss Watch Guides ({currentFooterLinks.length})</span>
+                    <span>3. Policy & Information Links ({currentFooterLinks.length})</span>
                   </label>
                   <button
                     type="button"
@@ -1110,7 +1104,7 @@ export const MarketingCMS: React.FC = () => {
                     className="p-2 bg-zinc-950 border border-zinc-800 hover:border-amber-500/60 rounded-lg text-left text-[10px] text-zinc-300 hover:text-amber-200 transition-colors cursor-pointer"
                   >
                     <div className="font-bold text-amber-400">✨ Executive Gold Timepiece</div>
-                    <div className="text-[9px] text-zinc-500">Boutique Luxury Unboxing</div>
+                    <div className="text-[9px] text-zinc-500">Showroom Luxury Unboxing</div>
                   </button>
                 </div>
               </div>

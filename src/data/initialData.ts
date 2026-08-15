@@ -382,12 +382,6 @@ export const INITIAL_HOMEPAGE_CONTENT = {
       label: 'Terms of Service',
       active: true,
       content: 'All timepieces sold by Kalpa Luxury come with verified digital QR certificates. Returns or exchanges must be presented with the original digital warranty QR code and untouched security seal within 7 days of purchase at our showroom.'
-    },
-    {
-      id: 'link-care-guide',
-      label: 'Swiss Watch Care Guide',
-      active: true,
-      content: 'Maintain your luxury automatic and quartz movements: Avoid exposure to strong magnetic fields, ensure screw-down crowns are fully engaged before water exposure, and service mechanical movements every 3-5 years at our Durbar Marg showroom.'
     }
   ]
 };

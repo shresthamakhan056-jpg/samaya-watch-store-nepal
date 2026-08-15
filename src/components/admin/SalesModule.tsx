@@ -7,6 +7,7 @@ import { exportSalesReport, exportSalesReportPDF, exportSingleEstimateBillPDF } 
 import { formatSalesEstimateBillMessage, openWhatsApp } from '../../utils/whatsappService';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import kalpaLogo from '../../assets/kalpa_logo.jpg';
+import { KALPA_LOGO_DATA_URL } from '../../assets/logoData';
 
 export const SalesModule: React.FC = () => {
   const { products, customers, sales, createSale, updateSale, deleteSale, currentUser } = useApp();
@@ -668,10 +669,11 @@ export const SalesModule: React.FC = () => {
             {/* Background Logo Watermark */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 select-none opacity-10">
               <img
-                src={kalpaLogo}
+                src={kalpaLogo || KALPA_LOGO_DATA_URL}
                 alt=""
                 className="w-[120mm] h-[120mm] max-w-[80%] rounded-full object-cover filter grayscale"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }}
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }}
               />
             </div>
 
@@ -701,7 +703,7 @@ export const SalesModule: React.FC = () => {
               {/* Sales Estimate Bill Header */}
               <div className="border-b-2 border-amber-600 pb-4 flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                  <img src={kalpaLogo} alt="कल्प Logo" className="w-14 h-14 rounded-full border border-amber-600/40 object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }} />
+                  <img src={kalpaLogo || KALPA_LOGO_DATA_URL} alt="कल्प Logo" className="w-14 h-14 rounded-full border border-amber-600/40 object-cover" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }} />
                   <div>
                     <h1 className="font-serif text-2xl font-bold uppercase tracking-widest text-zinc-900">
                       कल्प • Kalpa Luxury Timepieces

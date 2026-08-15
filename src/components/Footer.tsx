@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShieldCheck, ArrowUpRight, X, FileText } from 'lucide-react';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
+import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
 import { useApp } from '../context/AppContext';
 import { FooterLinkItem } from '../types';
 import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
@@ -14,7 +15,9 @@ export const Footer: React.FC<FooterProps> = () => {
   const { homepageContent } = useApp();
   const [activeModalLink, setActiveModalLink] = useState<FooterLinkItem | null>(null);
 
-  const activeLinks = (homepageContent.footerLinks || []).filter(link => link.active);
+  const activeLinks = (homepageContent.footerLinks || []).filter(
+    link => link.active && link.id !== 'link-care-guide' && !link.label.toLowerCase().includes('care guide')
+  );
 
   const brandDescription = homepageContent.footerBrandDescription ?? 
     'Nepal’s leading luxury timepiece importer & digital warranty pioneer. Specializing in Rolex, Omega, Patek Philippe, Tissot, and Audemars Piguet with verified digital certificates.';
@@ -30,8 +33,8 @@ export const Footer: React.FC<FooterProps> = () => {
           {/* Col 1: Brand Info */}
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-full bg-gradient-to-br from-amber-400 to-amber-800 p-0.5 flex items-center justify-center overflow-hidden shrink-0">
-                <img src={kalpaLogo} alt="कल्प Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }} />
+              <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-br from-amber-400 to-amber-800 p-0.5 flex items-center justify-center overflow-hidden shrink-0 border border-amber-400/40 shadow-lg">
+                <img src={kalpaLogo || KALPA_LOGO_DATA_URL} alt="कल्प Logo" className="w-full h-full object-cover rounded-full" referrerPolicy="no-referrer" onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }} />
               </div>
               <span className="font-serif text-xl tracking-wider text-amber-100 font-bold uppercase">
                 कल्प <span className="text-amber-500">• LUXURY TIMEPIECES</span>

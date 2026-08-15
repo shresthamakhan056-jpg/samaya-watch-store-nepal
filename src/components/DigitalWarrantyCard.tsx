@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Warranty } from '../types';
 import { formatWarrantyCertificateMessage, openWhatsApp } from '../utils/whatsappService';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
+import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
 
 interface DigitalWarrantyCardProps {
   warranty: Warranty;
@@ -69,15 +70,16 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
           <div className="flex items-center gap-3">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-lg shadow-amber-900/40 flex items-center justify-center overflow-hidden shrink-0">
               <img
-                src={kalpaLogo}
+                src={kalpaLogo || KALPA_LOGO_DATA_URL}
                 alt="कल्प Logo"
                 className="w-full h-full object-cover rounded-[14px]"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }}
+                referrerPolicy="no-referrer"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = KALPA_LOGO_DATA_URL; }}
               />
             </div>
             <div>
               <div className="font-serif text-xl sm:text-2xl font-bold text-amber-100 tracking-widest uppercase">
-                कल्प <span className="text-amber-500">LUXURY BOUTIQUE</span>
+                कल्प <span className="text-amber-500">LUXURY TIMEPIECES</span>
               </div>
               <div className="text-[11px] font-mono tracking-widest text-amber-400/90 uppercase">
                 OFFICIAL DIGITAL GUARANTEE CERTIFICATE

@@ -11,7 +11,7 @@ export const ContactPage: React.FC = () => {
             Flagship Luxury Showrooms
           </span>
           <h1 className="font-serif text-3xl sm:text-5xl font-bold text-amber-100">
-            Visit Our Boutiques in Nepal
+            Visit Our Showrooms in Nepal
           </h1>
           <p className="text-xs sm:text-sm text-zinc-400">
             Experience our full collection in person or reach our horology consultants via official social channels.
@@ -49,7 +49,7 @@ export const ContactPage: React.FC = () => {
             <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
               <MapPin className="w-6 h-6" />
             </div>
-            <h3 className="font-serif text-xl font-bold text-amber-100">Jhamsikhel Boutique & Service Lab</h3>
+            <h3 className="font-serif text-xl font-bold text-amber-100">Jhamsikhel Showroom & Service Lab</h3>
             <p className="text-xs text-zinc-300">Near British School, Jhamsikhel, Lalitpur, Nepal</p>
             
             <div className="space-y-2 text-xs text-zinc-400 pt-2 border-t border-zinc-800">

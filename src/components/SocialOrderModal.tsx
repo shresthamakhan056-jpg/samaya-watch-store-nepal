@@ -58,6 +58,8 @@ export const SocialOrderModal: React.FC<SocialOrderModalProps> = ({ product, onC
           <img
             src={product.images && product.images.length > 0 && product.images[0] ? product.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
             alt={product.model}
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'; }}
             className="w-16 h-16 rounded-lg object-cover border border-amber-500/20 bg-black"
           />

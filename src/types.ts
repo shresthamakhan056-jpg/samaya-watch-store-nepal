@@ -478,7 +478,7 @@ export interface CMSHomepageContent {
   tiktokLink: string;
   instagramLink: string;
   facebookLink: string;
-  // Dynamic Showroom Boutique Card Properties
+  // Dynamic Showroom Card Properties
   showroomEnabled?: boolean;
   showroomTag?: string;
   showroomTitle?: string;

@@ -1,11 +1,8 @@
 import { Sale, Warranty, WarrantyClaim } from '../types';
 
 // Default Official Store WhatsApp Number (Kalpa Watch Store Nepal)
-export const OFFICIAL_BOUTIQUE_WHATSAPP = '9779823680863';
 export const OFFICIAL_STORE_WHATSAPP = '9779823680863';
-export const OFFICIAL_BOUTIQUE_EMAIL = 'Kalpa9761@gmail.com';
 export const OFFICIAL_STORE_EMAIL = 'Kalpa9761@gmail.com';
-export const OFFICIAL_BOUTIQUE_PHONE_DISPLAY = '+977 9823680863';
 export const OFFICIAL_STORE_PHONE_DISPLAY = '+977 9823680863';
 
 /**

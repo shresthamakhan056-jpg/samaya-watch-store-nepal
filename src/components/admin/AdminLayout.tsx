@@ -74,7 +74,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               INTERNAL ERP SYSTEM
             </span>
             <h2 className="font-serif text-2xl font-bold text-amber-100 uppercase">
-              कल्प <span className="text-amber-500">LUXURY BOUTIQUE</span>
+              कल्प <span className="text-amber-500">LUXURY TIMEPIECES</span>
             </h2>
             <p className="text-xs text-zinc-400 leading-relaxed">
               Authentication required. Enter your staff username and password to log in.
@@ -169,7 +169,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               INTERNAL ERP SYSTEM
             </span>
             <h1 className="font-serif text-lg font-bold text-amber-100 uppercase">
-              कल्प <span className="text-amber-500">LUXURY BOUTIQUE</span>
+              कल्प <span className="text-amber-500">LUXURY TIMEPIECES</span>
             </h1>
           </div>
 

@@ -1507,22 +1507,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const getWarrantyByIdOrMobile = (query: string): Warranty | undefined => {
-    const clean = query.trim().toUpperCase();
-    if (!clean) return undefined;
+    const raw = (query || '').trim();
+    if (!raw) return undefined;
 
-    const found = warranties.find(w =>
-      w.id.toUpperCase() === clean ||
-      w.serialNumber.toUpperCase() === clean ||
-      w.customerMobile.replace(/\D/g, '').endsWith(clean.replace(/\D/g, '')) ||
-      w.invoiceNumber.toUpperCase() === clean
-    );
-    return found ? syncWarrantyWithSalesDate(found) : undefined;
+    const cleanUpper = raw.toUpperCase();
+    const cleanDigits = raw.replace(/\D/g, '');
+
+    // 1. Strict Warranty Number (Warranty ID) Verification Only
+    const foundById = warranties.find(w => w.id.toUpperCase() === cleanUpper);
+    if (foundById) {
+      return syncWarrantyWithSalesDate(foundById);
+    }
+
+    // 2. Strict Registered Mobile Number Verification Only
+    if (cleanDigits.length >= 7) {
+      const foundByMobile = warranties.find(w => {
+        const wDigits = w.customerMobile.replace(/\D/g, '');
+        if (!wDigits) return false;
+        // Exact mobile match or standard 10-digit mobile match (e.g., 9823680863 or 9779823680863)
+        return (
+          wDigits === cleanDigits ||
+          (cleanDigits.length === 10 && wDigits.endsWith(cleanDigits)) ||
+          (wDigits.length === 10 && cleanDigits.endsWith(wDigits))
+        );
+      });
+
+      if (foundByMobile) {
+        return syncWarrantyWithSalesDate(foundByMobile);
+      }
+    }
+
+    // Disallowed: Do NOT verify by Serial Number, Invoice Number, or customer name
+    return undefined;
   };
 
   const getWarrantiesByMobile = (mobile: string): Warranty[] => {
-    const clean = mobile.replace(/\D/g, '');
-    if (!clean) return [];
-    return warranties.filter(w => w.customerMobile.replace(/\D/g, '').includes(clean)).map(syncWarrantyWithSalesDate);
+    const cleanDigits = (mobile || '').replace(/\D/g, '');
+    if (!cleanDigits || cleanDigits.length < 7) return [];
+
+    return warranties
+      .filter(w => {
+        const wDigits = w.customerMobile.replace(/\D/g, '');
+        if (!wDigits) return false;
+        return (
+          wDigits === cleanDigits ||
+          (cleanDigits.length === 10 && wDigits.endsWith(cleanDigits)) ||
+          (wDigits.length === 10 && cleanDigits.endsWith(wDigits))
+        );
+      })
+      .map(syncWarrantyWithSalesDate);
   };
 
   const updateWarrantyStatus = (warrantyId: string, status: 'Active' | 'Expired' | 'Void', remarks?: string) => {
