@@ -133,7 +133,7 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
 
               <div className="bg-zinc-950/80 p-4 rounded-xl border border-zinc-800">
                 <span className="text-[10px] uppercase font-mono tracking-widest text-amber-400/90 block mb-1">
-                  Authorized Dealer Boutique
+                  Authorized Dealer Showroom
                 </span>
                 <span className="text-xs text-zinc-200 font-medium">
                   {warranty.dealerName}
@@ -225,7 +225,7 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
           <div className="flex items-center gap-2 mb-4">
             <Wrench className="w-4 h-4 text-amber-400" />
             <h4 className="font-serif text-sm font-bold uppercase tracking-wider text-amber-200">
-              Boutique Service & Inspection History ({warranty.serviceHistory?.length || 0})
+              Store Service & Inspection History ({warranty.serviceHistory?.length || 0})
             </h4>
           </div>
 

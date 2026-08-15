@@ -88,7 +88,7 @@ export const MarketingCMS: React.FC = () => {
   const handleSaveHomepageContent = (e: React.FormEvent) => {
     e.preventDefault();
     updateHomepageContent(contentForm);
-    setSaveStatus('✅ Homepage text saved & published live across the boutique app!');
+    setSaveStatus('✅ Homepage text & settings saved live!');
     setTimeout(() => setSaveStatus(''), 5000);
   };
 
@@ -307,6 +307,55 @@ export const MarketingCMS: React.FC = () => {
               </div>
             )}
 
+            {/* UNDER MAINTENANCE MODE CONFIGURATION */}
+            <div className={`p-4 rounded-xl border transition-all space-y-3 ${
+              contentForm.maintenanceMode 
+                ? 'bg-amber-950/40 border-amber-500/60' 
+                : 'bg-zinc-950/80 border-zinc-800'
+            }`}>
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2.5 h-2.5 rounded-full ${contentForm.maintenanceMode ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                  <span className="text-zinc-100 font-serif font-bold text-sm">Under Maintenance Public Mode</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setContentForm({ ...contentForm, maintenanceMode: !contentForm.maintenanceMode })}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                      contentForm.maintenanceMode 
+                        ? 'bg-amber-500 text-zinc-950' 
+                        : 'bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-700'
+                    }`}
+                  >
+                    {contentForm.maintenanceMode ? (
+                      <>
+                        <ToggleRight className="w-4 h-4 text-zinc-950" />
+                        <span>Maintenance ENABLED</span>
+                      </>
+                    ) : (
+                      <>
+                        <ToggleLeft className="w-4 h-4 text-zinc-400" />
+                        <span>Maintenance DISABLED (Live)</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-zinc-400 block mb-1 font-mono text-xs">Custom Maintenance Notice Message (Displayed to Visitors):</label>
+                <textarea
+                  rows={2}
+                  value={contentForm.maintenanceNotice || ''}
+                  onChange={(e) => setContentForm({ ...contentForm, maintenanceNotice: e.target.value })}
+                  placeholder="We are currently performing scheduled maintenance to upgrade our system. For inquiries and purchases, please contact us on WhatsApp (+977 9823680863) or social channels."
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 text-amber-200 text-xs"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="text-zinc-400 block mb-1 font-mono font-bold">Top Showroom Notice Bar Text:</label>
               <textarea
@@ -319,7 +368,7 @@ export const MarketingCMS: React.FC = () => {
 
             {/* Brand Title & Location */}
             <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3">
-              <span className="text-amber-400 font-mono font-bold text-[11px] uppercase block">Boutique Brand & Location Banner:</span>
+              <span className="text-amber-400 font-mono font-bold text-[11px] uppercase block">Store Brand & Location Banner:</span>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
@@ -344,10 +393,10 @@ export const MarketingCMS: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-zinc-400 block mb-1 font-mono">Boutique Location Subtitle:</label>
+                <label className="text-zinc-400 block mb-1 font-mono">Store Location Subtitle:</label>
                 <input
                   type="text"
-                  value={contentForm.locationSubtitle || 'DURBAR MARG • JHAMSIKHEL'}
+                  value={contentForm.locationSubtitle || 'EXCLUSIVELY SERVING NEPAL'}
                   onChange={(e) => setContentForm({ ...contentForm, locationSubtitle: e.target.value })}
                   className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-300 font-mono"
                 />
@@ -464,14 +513,14 @@ export const MarketingCMS: React.FC = () => {
 
                   <button
                     type="button"
-                    title="Restore default Durbar Marg showroom text"
+                    title="Restore default showroom text"
                     onClick={() => setContentForm({
                       ...contentForm,
                       showroomEnabled: true,
-                      showroomTag: 'Flagship Boutique • Kathmandu, Nepal',
-                      showroomTitle: 'Durbar Marg Flagship Showroom',
+                      showroomTag: 'Flagship Showroom • Kathmandu, Nepal',
+                      showroomTitle: 'Kathmandu Flagship Showroom',
                       showroomDescription: 'Experience the finest timepieces in an exclusive, private environment. Our watch specialists are ready to guide your selection.',
-                      showroomAddress: '📍 Address: Opposite Annapurna Hotel, Durbar Marg, Kathmandu',
+                      showroomAddress: '📍 Address: Kathmandu, Nepal',
                       showroomContact: '📞 Phone: +977 9823680863 | ✉️ Email: Kalpa9761@gmail.com | Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
                       showroomPhone: '9779823680863',
                       showroomButtonText: 'Contact Showroom Representative'
@@ -505,13 +554,13 @@ export const MarketingCMS: React.FC = () => {
                 <div className="space-y-3 pt-1">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="text-zinc-400 block mb-1 font-mono">Boutique Tag / Header:</label>
+                      <label className="text-zinc-400 block mb-1 font-mono">Showroom Tag / Header:</label>
                       <input
                         type="text"
-                        value={contentForm.showroomTag ?? 'Flagship Boutique • Kathmandu, Nepal'}
+                        value={contentForm.showroomTag ?? 'Flagship Showroom • Kathmandu, Nepal'}
                         onChange={(e) => setContentForm({ ...contentForm, showroomTag: e.target.value })}
                         className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-amber-300 font-mono"
-                        placeholder="Flagship Boutique • Kathmandu, Nepal"
+                        placeholder="Flagship Showroom • Kathmandu, Nepal"
                       />
                     </div>
 
@@ -643,7 +692,7 @@ export const MarketingCMS: React.FC = () => {
                       title="Restore default copyright"
                       onClick={() => setContentForm({
                         ...contentForm,
-                        footerCopyrightText: '© 2026 कल्प • Kalpa Luxury Timepiece Boutique. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.'
+                        footerCopyrightText: '© 2026 कल्प • Kalpa Luxury Timepieces. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.'
                       })}
                       className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-amber-300 text-[10px] font-mono flex items-center gap-1 cursor-pointer"
                     >
@@ -810,7 +859,7 @@ export const MarketingCMS: React.FC = () => {
                 {contentForm.socialChannelsText}
               </p>
 
-              {/* Live Preview of Showroom Boutique Card */}
+              {/* Live Preview of Showroom Details Card */}
               {(contentForm.showroomEnabled ?? true) && (
                 <div className="mt-6 p-4 rounded-xl bg-zinc-950 border border-amber-500/30 text-left space-y-2">
                   {contentForm.showroomTag && (

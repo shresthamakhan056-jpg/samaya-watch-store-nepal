@@ -1,9 +1,12 @@
 import { Sale, Warranty, WarrantyClaim } from '../types';
 
-// Default Official Boutique WhatsApp Number (Kalpa Watch Store Nepal)
+// Default Official Store WhatsApp Number (Kalpa Watch Store Nepal)
 export const OFFICIAL_BOUTIQUE_WHATSAPP = '9779823680863';
+export const OFFICIAL_STORE_WHATSAPP = '9779823680863';
 export const OFFICIAL_BOUTIQUE_EMAIL = 'Kalpa9761@gmail.com';
+export const OFFICIAL_STORE_EMAIL = 'Kalpa9761@gmail.com';
 export const OFFICIAL_BOUTIQUE_PHONE_DISPLAY = '+977 9823680863';
+export const OFFICIAL_STORE_PHONE_DISPLAY = '+977 9823680863';
 
 /**
  * Normalizes phone number into international WhatsApp format (e.g. 9851234567 -> 9779851234567)
@@ -80,7 +83,7 @@ Your timepiece is officially backed by our 100% genuine movement & water-resista
 🔗 *View & Verify Digital Guarantee Card:*
 ${verifyLink}
 
-📍 *Boutique Address:* Durbar Marg / New Road, Kathmandu, Nepal
+📍 *Address:* Kathmandu, Nepal
 📞 *Customer Care / WhatsApp:* +977-9823680863
 ✉️ *Official Email:* Kalpa9761@gmail.com
 
@@ -130,13 +133,13 @@ Here is your verified official *कल्प Digital Guarantee Certificate*:
 📅 *Valid From:* ${warranty.warrantyStart}
 ⏳ *Expiry Date:* ${warranty.extendedEnd || warranty.warrantyEnd}
 🟢 *Status:* ${warranty.status.toUpperCase()}
-🏢 *Authorized Boutique:* ${warranty.dealerName}
+🏢 *Authorized Store:* ${warranty.dealerName}
 
 🔗 *Live Verification & Claim Portal:*
 ${verifyLink}
 
 _Covered: Mechanical Movement, Time Accuracy, Water Resistance Seals._
-_Boutique Care: +977-9823680863 | Email: Kalpa9761@gmail.com_`;
+_Store Care: +977-9823680863 | Email: Kalpa9761@gmail.com_`;
 };
 
 /**
@@ -154,7 +157,8 @@ Update regarding your service claim for timepiece *${claim.productBrand} ${claim
 ⚙️ *Issue Category:* ${claim.category}
 📊 *Current Status:* *${claim.status.toUpperCase()}*
 
-${claim.inspection?.notes ? `📋 *Inspection Report:* ${claim.inspection.notes}\n` : ''}${claim.repair?.actionTaken ? `🛠️ *Technician Action:* ${claim.repair.actionTaken}\n` : ''}${claim.status === 'Ready for Collection' ? `🔐 *Ready for Pickup:* Please visit our boutique counter with your claim ID to collect your timepiece.\n` : ''}
+${claim.inspection?.notes ? `📋 *Inspection Report:* ${claim.inspection.notes}\n` : ''}${claim.repair?.actionTaken ? `🛠️ *Technician Action:* ${claim.repair.actionTaken}\n` : ''}${claim.status === 'Ready for Collection' ? `🔐 *Ready for Pickup:* Please visit our store counter with your claim ID to collect your timepiece.\n` : ''}
 Thank you for choosing कल्प Luxury Horology.
-📞 Boutique Support: +977-9823680863 | ✉️ Kalpa9761@gmail.com`;
+📞 Store Support: +977-9823680863 | ✉️ Kalpa9761@gmail.com`;
 };
+

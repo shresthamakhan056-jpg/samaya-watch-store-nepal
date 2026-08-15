@@ -8,16 +8,24 @@ import { SocialOrderModal } from './components/SocialOrderModal';
 import { WarrantyPage } from './components/WarrantyPage';
 import { PromotionsPage } from './components/PromotionsPage';
 import { AdminLayout } from './components/admin/AdminLayout';
+import { MaintenancePage } from './components/MaintenancePage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { useApp } from './context/AppContext';
 import { Product } from './types';
 
 function AppContent() {
+  const { homepageContent } = useApp();
   const [currentPage, setCurrentPage] = useState<'home' | 'gallery' | 'warranty' | 'promotions'>('home');
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [selectedProductForModal, setSelectedProductForModal] = useState<Product | null>(null);
 
   if (isAdminOpen) {
     return <AdminLayout setIsAdminOpen={setIsAdminOpen} />;
+  }
+
+  // If Under Maintenance mode is enabled, display the maintenance page to regular visitors
+  if (homepageContent?.maintenanceMode) {
+    return <MaintenancePage setIsAdminOpen={setIsAdminOpen} />;
   }
 
   return (

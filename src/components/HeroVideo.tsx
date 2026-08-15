@@ -153,7 +153,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-amber-400" />
                 <h2 className="font-serif text-xl sm:text-2xl font-bold text-amber-100">
-                  Exclusive Boutique Promotions & Offers
+                  Exclusive Store Promotions & Offers
                 </h2>
               </div>
               <span className="text-xs font-mono text-amber-400/80">

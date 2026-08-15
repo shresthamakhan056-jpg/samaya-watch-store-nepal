@@ -320,7 +320,7 @@ export const INITIAL_ACCOUNTS: Account[] = [
   { id: 'acc-5020', code: '5020', name: 'Courier & Secure Logistics Expense', category: 'Expenses', group: 'Selling & Distribution Expenses', type: 'Courier Charges', openingBalance: 0, balance: 0, isSystem: false },
   { id: 'acc-5030', code: '5030', name: 'Sales Discounts Given', category: 'Expenses', group: 'Selling & Distribution Expenses', type: 'Discount', openingBalance: 0, balance: 0, isSystem: true },
   { id: 'acc-5040', code: '5040', name: 'Social Media & Influencer Marketing', category: 'Expenses', group: 'Selling & Distribution Expenses', type: 'Expenses', openingBalance: 0, balance: 0, isSystem: false },
-  { id: 'acc-5050', code: '5050', name: 'Showroom Rent & Boutique Lease', category: 'Expenses', group: 'Administrative & General Expenses', type: 'Expenses', openingBalance: 0, balance: 0, isSystem: false },
+  { id: 'acc-5050', code: '5050', name: 'Showroom Rent & Store Lease', category: 'Expenses', group: 'Administrative & General Expenses', type: 'Expenses', openingBalance: 0, balance: 0, isSystem: false },
   { id: 'acc-5060', code: '5060', name: 'Staff Salary, Allowances & Wages', category: 'Expenses', group: 'Administrative & General Expenses', type: 'Expenses', openingBalance: 0, balance: 0, isSystem: false },
   { id: 'acc-5070', code: '5070', name: 'Showroom Utilities & Power', category: 'Expenses', group: 'Administrative & General Expenses', type: 'Expenses', openingBalance: 0, balance: 0, isSystem: false },
   { id: 'acc-5080', code: '5080', name: 'Depreciation Expense', category: 'Expenses', group: 'Administrative & General Expenses', type: 'Expenses', openingBalance: 0, balance: 0, isSystem: true },
@@ -350,7 +350,7 @@ export const INITIAL_HOMEPAGE_CONTENT = {
   certifiedImporterBadge: 'CERTIFIED IMPORTER IN NEPAL',
   heroHeadlineLine1: 'Elegance Timed in Nepal.',
   heroHeadlineLine2: 'Timeless Precision Crafted for the Connoisseur',
-  heroSubheadline: 'Discover original Swiss and luxury timepieces. Every purchase generates an automated, immutable digital QR warranty card linked directly to our official boutique records.',
+  heroSubheadline: 'Discover original Swiss and luxury timepieces. Every purchase generates an automated, immutable digital QR warranty card linked directly to our official store records.',
   heroVideoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-hand-holding-a-luxury-watch-41551-large.mp4',
   exploreCollectionButtonText: 'EXPLORE COLLECTION',
   verifyWarrantyButtonText: 'VERIFY DIGITAL WARRANTY',
@@ -359,15 +359,17 @@ export const INITIAL_HOMEPAGE_CONTENT = {
   instagramLink: 'https://instagram.com',
   facebookLink: 'https://facebook.com',
   showroomEnabled: true,
-  showroomTag: 'Flagship Boutique • Kathmandu, Nepal',
-  showroomTitle: 'Durbar Marg Flagship Showroom',
+  showroomTag: 'Flagship Showroom • Kathmandu, Nepal',
+  showroomTitle: 'Kathmandu Flagship Showroom',
   showroomDescription: 'Experience the finest timepieces in an exclusive, private environment. Our watch specialists are ready to guide your selection.',
-  showroomAddress: '📍 Address: Opposite Annapurna Hotel, Durbar Marg, Kathmandu',
+  showroomAddress: '📍 Address: Kathmandu, Nepal',
   showroomContact: '📞 Phone: +977 9823680863 | ✉️ Email: Kalpa9761@gmail.com | Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
   showroomPhone: '9779823680863',
   showroomButtonText: 'Contact Showroom Representative',
+  maintenanceMode: false,
+  maintenanceNotice: 'We are currently performing scheduled maintenance to upgrade our system. For inquiries and purchases, please contact us on WhatsApp (+977 9823680863) or social channels.',
   footerBrandDescription: 'Nepal’s leading luxury timepiece importer & digital warranty pioneer. Specializing in Rolex, Omega, Patek Philippe, Tissot, and Audemars Piguet with verified digital certificates.',
-  footerCopyrightText: '© 2026 कल्प • Kalpa Luxury Timepiece Boutique. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.',
+  footerCopyrightText: '© 2026 कल्प • Kalpa Luxury Timepieces. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.',
   footerLinks: [
     {
       id: 'link-privacy',
@@ -379,7 +381,7 @@ export const INITIAL_HOMEPAGE_CONTENT = {
       id: 'link-terms',
       label: 'Terms of Service',
       active: true,
-      content: 'All timepieces sold by Kalpa Luxury come with verified digital QR certificates. Returns or exchanges must be presented with the original digital warranty QR code and untouched security seal within 7 days of purchase at our Durbar Marg showroom.'
+      content: 'All timepieces sold by Kalpa Luxury come with verified digital QR certificates. Returns or exchanges must be presented with the original digital warranty QR code and untouched security seal within 7 days of purchase at our showroom.'
     },
     {
       id: 'link-care-guide',

@@ -1,15 +1,35 @@
-import React from 'react';
-import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText, Layers } from 'lucide-react';
+import React, { useState } from 'react';
+import { DollarSign, ShoppingBag, ShieldCheck, AlertTriangle, TrendingUp, Users, Watch, Clock, FileText, Layers, Wrench, CheckCircle2, ShieldAlert, AlertCircle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useApp } from '../../context/AppContext';
 import { BrandStockVisualization } from './BrandStockVisualization';
+import { FinancialOverviewLedger } from './FinancialOverviewLedger';
 
 interface AdminDashboardProps {
   onNavigateToPurchases?: () => void;
+  onNavigateToAccounting?: () => void;
+  onNavigateToSales?: () => void;
+  onNavigateToInventory?: () => void;
+  onNavigateToCMS?: () => void;
 }
 
-export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateToPurchases }) => {
-  const { sales, products, warranties, customers, auditLogs, currentUser } = useApp();
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({
+  onNavigateToPurchases,
+  onNavigateToAccounting,
+  onNavigateToSales,
+  onNavigateToInventory,
+  onNavigateToCMS
+}) => {
+  const { sales, products, warranties, customers, auditLogs, currentUser, homepageContent, updateHomepageContent } = useApp();
+  const [maintenanceSavedNotice, setMaintenanceSavedNotice] = useState(false);
+
+  const isMaintenanceActive = Boolean(homepageContent.maintenanceMode);
+
+  const handleToggleMaintenance = (enabled: boolean) => {
+    updateHomepageContent({ maintenanceMode: enabled });
+    setMaintenanceSavedNotice(true);
+    setTimeout(() => setMaintenanceSavedNotice(false), 3000);
+  };
 
   // Metrics calculations
   const totalRevenue = sales.reduce((sum, s) => sum + s.finalTotal, 0);
@@ -58,6 +78,84 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigateToPurc
           </span>
         </div>
       </div>
+
+      {/* UNDER MAINTENANCE MODE SWITCH CONTROL */}
+      <div className={`p-5 rounded-2xl border transition-all ${
+        isMaintenanceActive 
+          ? 'bg-amber-950/30 border-amber-500 shadow-xl shadow-amber-500/10' 
+          : 'bg-zinc-900/80 border-zinc-800 hover:border-zinc-700'
+      }`}>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 ${
+              isMaintenanceActive 
+                ? 'bg-amber-500/20 text-amber-400 border-amber-500/50' 
+                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+            }`}>
+              <Wrench className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-serif text-base font-bold text-zinc-100">
+                  Website Public Access & Under Maintenance Mode
+                </h3>
+                <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1 ${
+                  isMaintenanceActive 
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50' 
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${isMaintenanceActive ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'}`} />
+                  {isMaintenanceActive ? 'Under Maintenance (Enabled)' : 'Website Publicly Live (Disabled)'}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                {isMaintenanceActive 
+                  ? 'Store website is displaying the luxury Under Maintenance screen to public visitors. Admin ERP is unlocked and fully accessible.'
+                  : 'Store website is live to the public with full watch catalogue, digital warranty verification, and social ordering.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0 self-end md:self-center">
+            {maintenanceSavedNotice && (
+              <span className="text-xs text-emerald-400 font-mono flex items-center gap-1 animate-pulse">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Saved Live
+              </span>
+            )}
+            <div className="flex items-center gap-2 bg-zinc-950 p-1.5 rounded-xl border border-zinc-800">
+              <button
+                type="button"
+                onClick={() => handleToggleMaintenance(false)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  !isMaintenanceActive
+                    ? 'bg-emerald-500 text-zinc-950 shadow-md'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Disable Maintenance (Live)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleMaintenance(true)}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  isMaintenanceActive
+                    ? 'bg-amber-500 text-zinc-950 shadow-md font-bold'
+                    : 'text-zinc-400 hover:text-amber-300'
+                }`}
+              >
+                Enable Maintenance Mode
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* FINANCIAL OVERVIEW SECTION (Double-Entry Ledger, Sales & Inventory Valuation) */}
+      <FinancialOverviewLedger
+        onNavigateToAccounting={onNavigateToAccounting}
+        onNavigateToSales={onNavigateToSales}
+        onNavigateToInventory={onNavigateToInventory}
+      />
 
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

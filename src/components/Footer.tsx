@@ -19,7 +19,7 @@ export const Footer: React.FC<FooterProps> = () => {
     'Nepal’s leading luxury timepiece importer & digital warranty pioneer. Specializing in Rolex, Omega, Patek Philippe, Tissot, and Audemars Piguet with verified digital certificates.';
 
   const copyrightText = homepageContent.footerCopyrightText ?? 
-    '© 2026 कल्प • Kalpa Luxury Timepiece Boutique. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.';
+    '© 2026 कल्प • Kalpa Luxury Timepieces. All Rights Reserved. Built with Automated ERP & Digital QR Warranty Engine.';
 
   return (
     <footer className="bg-[#050506] text-zinc-400 border-t border-amber-500/20 pt-16 pb-12">

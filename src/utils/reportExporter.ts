@@ -146,7 +146,7 @@ export const exportToPDF = (
       doc.setFontSize(7);
       doc.setTextColor(161, 161, 170);
       doc.text(
-        `Page ${data.pageNumber} of ${totalPages}  •  Kalpa Luxury Timepiece Boutique ERP  •  Confidential Financial Document`,
+        `Page ${data.pageNumber} of ${totalPages}  •  Kalpa Luxury Timepiece Store ERP  •  Confidential Financial Document`,
         pageWidth / 2,
         doc.internal.pageSize.getHeight() - 8,
         { align: 'center' }

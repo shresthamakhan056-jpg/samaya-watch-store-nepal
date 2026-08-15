@@ -487,6 +487,9 @@ export interface CMSHomepageContent {
   showroomContact?: string;
   showroomPhone?: string;
   showroomButtonText?: string;
+  // Under Maintenance Mode Configuration
+  maintenanceMode?: boolean;
+  maintenanceNotice?: string;
   // Dynamic Footer Properties
   footerBrandDescription?: string;
   footerCopyrightText?: string;

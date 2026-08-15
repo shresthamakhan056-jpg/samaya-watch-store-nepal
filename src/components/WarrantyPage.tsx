@@ -293,7 +293,7 @@ export const WarrantyPage: React.FC = () => {
                   We could not locate any active sales invoice or warranty certificate matching query <strong className="text-amber-300 font-mono">"{query}"</strong>.
                 </p>
                 <p className="text-[11px] text-zinc-500 max-w-md mx-auto">
-                  If you recently acquired this timepiece from our boutique or require an authenticity check, please send an instant verification request to our horologist desk on WhatsApp.
+                  If you recently acquired this timepiece from our store or require an authenticity check, please send an instant verification request to our horologist desk on WhatsApp.
                 </p>
                 <div className="pt-2">
                   <button
