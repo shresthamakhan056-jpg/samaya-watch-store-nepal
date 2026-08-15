@@ -24,6 +24,7 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { Account, AccountCategory, AccountGroup } from '../../../types';
 import { exportChartOfAccountsPDF, exportToCSV } from '../../../utils/reportExporter';
+import { DeleteVerificationModal } from '../DeleteVerificationModal';
 
 export const ChartOfAccountsView: React.FC = () => {
   const {
@@ -526,7 +527,7 @@ export const ChartOfAccountsView: React.FC = () => {
                   type="text"
                   value={formName}
                   onChange={e => setFormName(e.target.value)}
-                  placeholder="e.g. Cash in Hand, Nabil Bank Main Account"
+                  placeholder="e.g. Cash in Hand, Operating Bank Account"
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
                   required
                 />
@@ -799,85 +800,19 @@ export const ChartOfAccountsView: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 3: DELETE CONFIRMATION */}
+      {/* MODAL 3: DELETE CONFIRMATION (3-TIMES VERIFIED WITH TIMED LOCK) */}
       {deletingAccount && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-slate-900 border-2 border-rose-500/40 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl p-6 text-slate-100 animate-in fade-in zoom-in-95 duration-150 space-y-4">
-            
-            <div className="flex items-center space-x-3">
-              <div className="p-3 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-white">
-                  Delete Account Head?
-                </h3>
-                <span className="text-xs text-rose-400 font-mono">
-                  [{deletingAccount.code}] {deletingAccount.name}
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-slate-950/90 p-3.5 rounded-xl border border-slate-800 space-y-2 text-xs font-mono">
-              <div className="flex justify-between">
-                <span className="text-slate-400">Category:</span>
-                <span className="text-slate-200">{deletingAccount.category}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Statement Group:</span>
-                <span className="text-slate-200">{deletingAccount.group || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Current Balance:</span>
-                <span className="text-emerald-400 font-bold">NPR {deletingAccount.balance.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between border-t border-slate-800/80 pt-1.5">
-                <span className="text-slate-400">Linked Journal Vouchers:</span>
-                <span className={`font-bold ${referencingEntriesCount > 0 ? 'text-amber-400' : 'text-slate-300'}`}>
-                  {referencingEntriesCount} Vouchers
-                </span>
-              </div>
-            </div>
-
-            {referencingEntriesCount > 0 && (
-              <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-300 text-xs flex items-start space-x-2">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-                <div>
-                  <strong>Warning:</strong> This account is currently linked with <strong>{referencingEntriesCount}</strong> journal entry voucher(s). Deleting it will remove it from the Chart of Accounts master.
-                </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => setDeletingAccount(null)}
-                className="px-4 py-2.5 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
-              >
-                Cancel
-              </button>
-
-              {referencingEntriesCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteConfirm(true)}
-                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-600/30 cursor-pointer"
-                >
-                  Force Delete Account
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteConfirm(false)}
-                  className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-600/30 cursor-pointer"
-                >
-                  Confirm Delete
-                </button>
-              )}
-            </div>
-
-          </div>
-        </div>
+        <DeleteVerificationModal
+          isOpen={!!deletingAccount}
+          title="Delete Chart of Accounts Head"
+          itemName={`[${deletingAccount.code}] ${deletingAccount.name}`}
+          itemType="General Ledger Account Head"
+          detailsText={`Category: ${deletingAccount.category} • Current Balance: NPR ${deletingAccount.balance.toLocaleString()} • Linked Journal Vouchers: ${referencingEntriesCount}. Deleting will remove this account code from the ledger tree.`}
+          requiredTimes={3}
+          lockDurationSeconds={3}
+          onClose={() => setDeletingAccount(null)}
+          onConfirm={() => handleDeleteConfirm(referencingEntriesCount > 0)}
+        />
       )}
 
     </div>

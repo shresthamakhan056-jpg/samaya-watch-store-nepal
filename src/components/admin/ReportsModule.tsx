@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BarChart3, Download, Printer, FileText, PieChart, ShieldCheck, RefreshCw, Layers, Watch, Truck, DollarSign } from 'lucide-react';
+import { BarChart3, Download, Printer, FileText, PieChart, ShieldCheck, RefreshCw, Layers, Watch, Truck, DollarSign, Box } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   exportSalesReport,
@@ -8,6 +8,8 @@ import {
   exportInventoryReportPDF,
   exportPurchaseReport,
   exportPurchaseReportPDF,
+  exportSupplyPurchasesReport,
+  exportSupplyPurchasesReportPDF,
   exportVatTaxReport,
   exportVatTaxReportPDF,
   exportWarrantyReport,
@@ -22,9 +24,9 @@ import {
 } from '../../utils/reportExporter';
 
 export const ReportsModule: React.FC = () => {
-  const { sales, products, customers, accounts, purchases, warranties, auditLogs, journalEntries } = useApp();
+  const { sales, products, customers, accounts, purchases, supplyPurchases, warranties, auditLogs, journalEntries } = useApp();
   const [reportType, setReportType] = useState<
-    'sales' | 'brand' | 'platform' | 'staff' | 'inventory' | 'purchases' | 'payments' | 'tax' | 'warranty' | 'audit'
+    'sales' | 'brand' | 'platform' | 'staff' | 'inventory' | 'purchases' | 'supplies' | 'payments' | 'tax' | 'warranty' | 'audit'
   >('sales');
 
   // Sales by Brand
@@ -81,6 +83,9 @@ export const ReportsModule: React.FC = () => {
         break;
       case 'purchases':
         exportPurchaseReport(purchases);
+        break;
+      case 'supplies':
+        exportSupplyPurchasesReport(supplyPurchases);
         break;
       case 'payments': {
         const headers = ['Voucher / Ref Number', 'Date', 'Description / Particulars', 'Account Code', 'Account Title', 'Debit (NPR)', 'Credit (NPR)', 'Posted By'];
@@ -139,6 +144,9 @@ export const ReportsModule: React.FC = () => {
         break;
       case 'purchases':
         exportPurchaseReportPDF(purchases);
+        break;
+      case 'supplies':
+        exportSupplyPurchasesReportPDF(supplyPurchases);
         break;
       case 'payments':
         exportPaymentsReportPDF(journalEntries);
@@ -248,7 +256,15 @@ export const ReportsModule: React.FC = () => {
             reportType === 'purchases' ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-white'
           }`}
         >
-          Purchase Orders ({purchases.length})
+          Watch Purchases ({purchases.length})
+        </button>
+        <button
+          onClick={() => setReportType('supplies')}
+          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            reportType === 'supplies' ? 'bg-amber-500 text-zinc-950' : 'text-amber-400 hover:text-amber-200'
+          }`}
+        >
+          Boxes & Supplies ({supplyPurchases.length})
         </button>
         <button
           onClick={() => setReportType('payments')}
@@ -473,6 +489,57 @@ export const ReportsModule: React.FC = () => {
           </div>
         )}
 
+        {/* Supplies & Packaging Report */}
+        {reportType === 'supplies' && (
+          <div className="space-y-4">
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+              <h3 className="font-serif text-lg font-bold text-amber-200 flex items-center gap-2">
+                <Box className="w-5 h-5 text-amber-400" />
+                <span>Non-Watch Supplies, Boxes & Packaging Procurement Report</span>
+              </h3>
+              <span className="text-xs font-mono text-amber-300 font-bold">
+                Total Spend: NPR {supplyPurchases.reduce((acc, p) => acc + p.cost, 0).toLocaleString()}
+              </span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs font-mono text-zinc-300">
+                <thead className="bg-zinc-950 text-amber-400 uppercase border-b border-zinc-800">
+                  <tr>
+                    <th className="p-3">Invoice #</th>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Category</th>
+                    <th className="p-3">Supplier</th>
+                    <th className="p-3">Items Summary</th>
+                    <th className="p-3 text-center">Total Units</th>
+                    <th className="p-3 text-right">Cost (NPR)</th>
+                    <th className="p-3">Ledger Target</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800">
+                  {supplyPurchases.map(pur => (
+                    <tr key={pur.id} className="hover:bg-zinc-800/40">
+                      <td className="p-3 font-bold text-amber-300">{pur.invoiceNumber}</td>
+                      <td className="p-3 text-zinc-400">{pur.purchaseDate}</td>
+                      <td className="p-3 text-zinc-300 font-sans">{pur.purchaseType}</td>
+                      <td className="p-3 text-zinc-200 font-sans">{pur.supplierName}</td>
+                      <td className="p-3 text-zinc-400 font-sans text-[11px]">
+                        {pur.items.map(it => `${it.supplyItemName} (${it.quantity})`).join(', ')}
+                      </td>
+                      <td className="p-3 text-center font-bold text-amber-300">{pur.quantity}</td>
+                      <td className="p-3 text-right font-bold text-emerald-400">
+                        NPR {pur.cost.toLocaleString()}
+                      </td>
+                      <td className="p-3 text-cyan-400 font-mono text-[11px]">
+                        {pur.accountType === '5020' ? 'Acc #5020 (Exp)' : 'Acc #1210 (Asset)'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* Financial Payments & Receipts Report */}
         {reportType === 'payments' && (
           <div className="space-y-4">
@@ -494,7 +561,7 @@ export const ReportsModule: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-zinc-800">
                   {journalEntries.map(je => {
-                    const isPayment = je.description.toUpperCase().includes('PAYMENT') || je.reference?.startsWith('PAY') || je.lines.some(l => l.credit > 0 && ['1010', '1020', '1030'].includes(l.accountCode));
+                    const isPayment = je.description.toUpperCase().includes('PAYMENT') || je.reference?.startsWith('PAY') || je.lines.some(l => l.credit > 0 && l.accountCode.startsWith('10'));
                     const totalAmt = je.lines.reduce((sum, l) => sum + Math.max(l.debit, l.credit), 0) / 2 || je.lines[0]?.debit || je.lines[0]?.credit || 0;
 
                     return (

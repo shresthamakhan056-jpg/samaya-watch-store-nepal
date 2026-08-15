@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Filter, Grid, LayoutList, Video, ArrowRight, ShieldCheck, Sparkles, Watch as WatchIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Product, MovementType, Gender } from '../types';
+import { LazyImage } from './LazyImage';
 
 interface WatchGalleryProps {
   onOrderWatch: (product: Product) => void;
@@ -155,19 +156,13 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
               >
                 <div>
                   <div className="relative aspect-square rounded-xl overflow-hidden bg-black mb-3">
-                    <img
+                    <LazyImage
                       src={watch.images && watch.images.length > 0 && watch.images[0] ? watch.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
                       alt={watch.model}
-                      loading="lazy"
-                      decoding="async"
-                      referrerPolicy="no-referrer"
-                      crossOrigin="anonymous"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
-                      }}
+                      wrapperClassName="w-full h-full"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end z-10">
                       <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded shadow ${
                         watch.status === 'In Stock' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
                         watch.status === 'Low Stock' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
@@ -177,7 +172,7 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
                       </span>
                     </div>
 
-                    <span className="absolute bottom-2 left-2 bg-black/80 backdrop-blur border border-amber-500/20 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded">
+                    <span className="absolute bottom-2 left-2 z-10 bg-black/80 backdrop-blur border border-amber-500/20 text-amber-300 text-[10px] font-mono px-2 py-0.5 rounded">
                       SKU: {watch.sku}
                     </span>
                   </div>
@@ -224,17 +219,11 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
                 className="bg-zinc-900/80 rounded-2xl border border-zinc-800 hover:border-amber-500/50 p-4 transition-all flex flex-col md:flex-row gap-6 items-center justify-between"
               >
                 <div className="flex items-center gap-4 w-full md:w-2/3">
-                  <img
+                  <LazyImage
                     src={watch.images && watch.images.length > 0 && watch.images[0] ? watch.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
                     alt={watch.model}
-                    loading="lazy"
-                    decoding="async"
-                    referrerPolicy="no-referrer"
-                    crossOrigin="anonymous"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
-                    }}
-                    className="w-24 h-24 rounded-xl object-cover border border-amber-500/30 bg-black shrink-0"
+                    wrapperClassName="w-24 h-24 rounded-xl border border-amber-500/30 shrink-0"
+                    className="w-full h-full object-cover"
                   />
                   <div className="space-y-1">
                     <div className="text-xs text-amber-400 font-bold uppercase tracking-wider">

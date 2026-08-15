@@ -8,6 +8,8 @@ import {
   Printer,
   RotateCcw,
   Eye,
+  Edit3,
+  Trash2,
   CheckCircle2,
   AlertTriangle,
   FileSpreadsheet,
@@ -16,6 +18,8 @@ import {
 import { useApp } from '../../../context/AppContext';
 import { JournalEntry, VoucherType } from '../../../types';
 import { exportJournalEntriesReportPDF, exportVoucherReceiptPDF, exportToCSV } from '../../../utils/reportExporter';
+import { UniversalVoucherModal } from './UniversalVoucherModal';
+import { DeleteVerificationModal } from '../DeleteVerificationModal';
 
 interface VoucherManagementProps {
   onOpenNewVoucher: (type?: VoucherType) => void;
@@ -25,6 +29,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
   const {
     journalEntries,
     reverseJournalEntry,
+    deleteJournalEntry,
     currentUser
   } = useApp();
 
@@ -35,6 +40,14 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
   const [reversalTarget, setReversalTarget] = useState<JournalEntry | null>(null);
   const [reversalReason, setReversalReason] = useState<string>('');
   const [notification, setNotification] = useState<string | null>(null);
+
+  // Edit State
+  const [editingVoucher, setEditingVoucher] = useState<JournalEntry | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+
+  // Delete State (Multi-step verification with timed delay)
+  const [deletingVoucher, setDeletingVoucher] = useState<JournalEntry | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState<boolean>(false);
 
   // Filter entries
   const filteredEntries = journalEntries.filter(entry => {
@@ -55,6 +68,32 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
 
   const handlePrintVoucher = (entry: JournalEntry) => {
     exportVoucherReceiptPDF(entry);
+  };
+
+  const handleOpenEdit = (entry: JournalEntry) => {
+    setEditingVoucher(entry);
+    setIsEditModalOpen(true);
+  };
+
+  const handleOpenDelete = (entry: JournalEntry) => {
+    setDeletingVoucher(entry);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deletingVoucher) return;
+    const res = deleteJournalEntry(deletingVoucher.id);
+    if (res.error) {
+      alert(res.error);
+      return;
+    }
+    setNotification(`✓ Permanently deleted Voucher #${deletingVoucher.entryNumber} and balanced ledger accounts.`);
+    setDeletingVoucher(null);
+    setIsDeleteModalOpen(false);
+    if (selectedEntry?.id === deletingVoucher.id) {
+      setSelectedEntry(null);
+    }
+    setTimeout(() => setNotification(null), 5000);
   };
 
   const handleOpenReversal = (entry: JournalEntry) => {
@@ -120,39 +159,39 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
         <div>
           <h2 className="text-lg font-bold text-white flex items-center space-x-2">
             <FileText className="w-5 h-5 text-amber-400" />
-            <span>Double-Entry Vouchers & Journal Register</span>
+            <span>Double-Entry Vouchers & Financial Transactions</span>
           </h2>
-          <p className="text-xs text-slate-400">Total {journalEntries.length} immutable transaction vouchers recorded in General Ledger</p>
+          <p className="text-xs text-slate-400">Manage, edit, modify, and delete transactions with multi-step verification</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onOpenNewVoucher('Customer Receipt')}
-            className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold transition"
+            className="px-3 py-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             + Receipt
           </button>
           <button
             onClick={() => onOpenNewVoucher('Supplier Payment')}
-            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition"
+            className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             + Payment
           </button>
           <button
             onClick={() => onOpenNewVoucher('Expense Voucher')}
-            className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-semibold transition"
+            className="px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             + Expense
           </button>
           <button
             onClick={() => onOpenNewVoucher('Contra / Transfer')}
-            className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-semibold transition"
+            className="px-3 py-1.5 bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
           >
             + Contra
           </button>
           <button
             onClick={() => onOpenNewVoucher('Journal Voucher')}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center space-x-1.5"
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center space-x-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>New Voucher</span>
@@ -160,82 +199,87 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
         </div>
       </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
-        <div className="flex flex-wrap items-center gap-3 flex-1">
-          <div className="relative min-w-[240px]">
+      {/* Filters and Search Bar */}
+      <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+          {/* Search Box */}
+          <div className="relative flex-1 md:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by Voucher #, Narration, Ref, Account..."
+              placeholder="Search voucher #, account, remarks..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-8 pr-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
             />
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2.5 top-2.5" />
           </div>
 
-          <select
-            value={selectedType}
-            onChange={e => setSelectedType(e.target.value)}
-            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-amber-500"
-          >
-            <option value="ALL">All Voucher Types</option>
-            <option value="Sales Invoice">Sales Invoice</option>
-            <option value="Purchase Invoice">Purchase Invoice</option>
-            <option value="Customer Receipt">Customer Receipt</option>
-            <option value="Supplier Payment">Supplier Payment</option>
-            <option value="Expense Voucher">Expense Voucher</option>
-            <option value="Journal Voucher">Journal Voucher</option>
-            <option value="Contra / Transfer">Contra / Transfer</option>
-            <option value="Sales Return">Sales Return / Credit Note</option>
-            <option value="Purchase Return">Purchase Return / Debit Note</option>
-            <option value="Fixed Asset Purchase">Fixed Asset Purchase</option>
-            <option value="Depreciation Entry">Depreciation Write-off</option>
-            <option value="Year-End Adjustment">Year-End Adjustment</option>
-          </select>
+          {/* Voucher Type Filter */}
+          <div className="flex items-center space-x-2">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <select
+              value={selectedType}
+              onChange={e => setSelectedType(e.target.value)}
+              className="bg-slate-950 border border-slate-800 text-slate-300 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+            >
+              <option value="ALL">All Voucher Types ({journalEntries.length})</option>
+              <option value="Journal Voucher">Journal Voucher (JV)</option>
+              <option value="Customer Receipt">Customer Receipt (CR)</option>
+              <option value="Supplier Payment">Supplier Payment (PV)</option>
+              <option value="Expense Voucher">Expense Voucher (EV)</option>
+              <option value="Contra / Transfer">Contra / Transfer (CV)</option>
+              <option value="Sales Return">Sales Return (SR)</option>
+              <option value="Purchase Return">Purchase Return (PR)</option>
+              <option value="Asset Depreciation">Asset Depreciation</option>
+              <option value="Year-End Closing">Year-End Closing</option>
+            </select>
+          </div>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={handleExportAllPDF}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition"
-          >
-            <Download className="w-3.5 h-3.5 text-amber-400" />
-            <span>Export PDF</span>
-          </button>
+        {/* Export Buttons */}
+        <div className="flex items-center space-x-2 self-end md:self-auto">
           <button
             onClick={handleExportAllCSV}
-            className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold transition"
+            className="flex items-center space-x-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+            title="Export CSV"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Export CSV</span>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>CSV</span>
+          </button>
+          <button
+            onClick={handleExportAllPDF}
+            className="flex items-center space-x-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+            title="Export PDF Report"
+          >
+            <Download className="w-4 h-4 text-amber-400" />
+            <span>PDF Register</span>
           </button>
         </div>
       </div>
 
       {/* Vouchers Table */}
-      <div className="bg-slate-900/90 border border-slate-800 rounded-2xl overflow-hidden shadow-lg">
+      <div className="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="bg-slate-950/70 border-b border-slate-800 text-slate-400">
-                <th className="py-3 px-4 font-semibold w-28">Voucher #</th>
-                <th className="py-3 px-3 font-semibold w-24">Date</th>
-                <th className="py-3 px-3 font-semibold w-32">Type</th>
-                <th className="py-3 px-3 font-semibold">Description / Particulars</th>
-                <th className="py-3 px-3 font-semibold w-24">Reference</th>
-                <th className="py-3 px-3 font-semibold w-32 text-right">Debit (NPR)</th>
-                <th className="py-3 px-3 font-semibold w-32 text-right">Credit (NPR)</th>
-                <th className="py-3 px-4 font-semibold w-28 text-center">Actions</th>
+              <tr className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider font-semibold">
+                <th className="py-3 px-4">Voucher #</th>
+                <th className="py-3 px-3">Posting Date</th>
+                <th className="py-3 px-3">Type</th>
+                <th className="py-3 px-3">Description & Account Breakdown</th>
+                <th className="py-3 px-3">Reference</th>
+                <th className="py-3 px-3 text-right">Debit (NPR)</th>
+                <th className="py-3 px-3 text-right">Credit (NPR)</th>
+                <th className="py-3 px-4 text-center">Admin Controls</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
               {filteredEntries.map(entry => {
-                const totalDebit = entry.lines.reduce((s, l) => s + (l.debit || 0), 0);
-                const totalCredit = entry.lines.reduce((s, l) => s + (l.credit || 0), 0);
+                const totalDebit = entry.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+                const totalCredit = entry.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
 
                 return (
-                  <tr key={entry.id} className={`hover:bg-slate-800/30 transition ${entry.isReversed ? 'opacity-60 bg-rose-950/10' : ''}`}>
+                  <tr key={entry.id} className="hover:bg-slate-800/30 transition">
                     <td className="py-3 px-4 font-mono font-bold text-amber-400">
                       <div className="flex items-center space-x-1.5">
                         <span>{entry.entryNumber}</span>
@@ -269,14 +313,21 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
                       <div className="flex items-center justify-center space-x-1">
                         <button
                           onClick={() => setSelectedEntry(entry)}
-                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition"
-                          title="Drill down to voucher details"
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded transition cursor-pointer"
+                          title="Drill down into voucher breakdown"
                         >
                           <Eye className="w-4 h-4" />
                         </button>
                         <button
+                          onClick={() => handleOpenEdit(entry)}
+                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                          title="Edit & Modify Voucher Lines"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handlePrintVoucher(entry)}
-                          className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition"
+                          className="p-1.5 text-slate-400 hover:text-sky-400 hover:bg-slate-800 rounded transition cursor-pointer"
                           title="Download Printable Voucher Receipt PDF"
                         >
                           <Printer className="w-4 h-4" />
@@ -284,12 +335,19 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
                         {!entry.isReversed && (
                           <button
                             onClick={() => handleOpenReversal(entry)}
-                            className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition"
+                            className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded transition cursor-pointer"
                             title="Reverse Voucher (Audit Correction)"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                           </button>
                         )}
+                        <button
+                          onClick={() => handleOpenDelete(entry)}
+                          className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded transition cursor-pointer"
+                          title="Verify & Delete Voucher (3-Step Timed Protocol)"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -321,7 +379,7 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
               </div>
               <button
                 onClick={() => setSelectedEntry(null)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -369,10 +427,10 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
                     <tr className="bg-slate-950 font-bold text-slate-200 border-t border-slate-800">
                       <td colSpan={2} className="py-2.5 px-3 text-right uppercase text-xs">Equilibrium Totals:</td>
                       <td className="py-2.5 px-3 text-right font-mono text-emerald-400">
-                        NPR {selectedEntry.lines.reduce((s, l) => s + (l.debit || 0), 0).toLocaleString()}
+                        NPR {selectedEntry.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0).toLocaleString()}
                       </td>
                       <td className="py-2.5 px-3 text-right font-mono text-rose-400">
-                        NPR {selectedEntry.lines.reduce((s, l) => s + (l.credit || 0), 0).toLocaleString()}
+                        NPR {selectedEntry.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0).toLocaleString()}
                       </td>
                     </tr>
                   </tfoot>
@@ -381,20 +439,46 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
             </div>
 
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-800 bg-slate-950/70">
-              <button
-                onClick={() => handlePrintVoucher(selectedEntry)}
-                className="flex items-center space-x-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition"
-              >
-                <Printer className="w-4 h-4 text-amber-400" />
-                <span>Download Voucher PDF</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handlePrintVoucher(selectedEntry)}
+                  className="flex items-center space-x-2 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  <Printer className="w-4 h-4 text-amber-400" />
+                  <span>Download Voucher PDF</span>
+                </button>
+                <button
+                  onClick={() => {
+                    const entryToEdit = selectedEntry;
+                    setSelectedEntry(null);
+                    handleOpenEdit(entryToEdit);
+                  }}
+                  className="flex items-center space-x-2 px-3.5 py-2 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  <Edit3 className="w-4 h-4 text-amber-400" />
+                  <span>Modify Voucher</span>
+                </button>
+              </div>
 
-              <button
-                onClick={() => setSelectedEntry(null)}
-                className="px-5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold transition"
-              >
-                Close
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => {
+                    const entryToDelete = selectedEntry;
+                    setSelectedEntry(null);
+                    handleOpenDelete(entryToDelete);
+                  }}
+                  className="px-3.5 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold transition cursor-pointer flex items-center space-x-1.5"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span>Delete Voucher</span>
+                </button>
+                <button
+                  onClick={() => setSelectedEntry(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -431,13 +515,13 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
                 <button
                   type="button"
                   onClick={() => setShowReversalModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white"
+                  className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-white cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-600/20"
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-rose-600/20 cursor-pointer"
                 >
                   Confirm Reversal
                 </button>
@@ -446,6 +530,38 @@ export const VoucherManagement: React.FC<VoucherManagementProps> = ({ onOpenNewV
           </div>
         </div>
       )}
+
+      {/* Universal Voucher Edit Modal */}
+      {isEditModalOpen && editingVoucher && (
+        <UniversalVoucherModal
+          isOpen={isEditModalOpen}
+          editingEntry={editingVoucher}
+          onClose={() => {
+            setIsEditModalOpen(false);
+            setEditingVoucher(null);
+          }}
+          onVoucherPosted={(num) => {
+            setNotification(`✓ Successfully updated Voucher #${num}`);
+            setTimeout(() => setNotification(null), 5000);
+          }}
+        />
+      )}
+
+      {/* Delete Verification Modal (Verified 3 times with timed lock countdown) */}
+      <DeleteVerificationModal
+        isOpen={isDeleteModalOpen}
+        title="Delete Accounting Voucher"
+        itemType="Journal Entry / Voucher"
+        itemName={deletingVoucher ? `${deletingVoucher.entryNumber} — ${deletingVoucher.description}` : ''}
+        detailsText={deletingVoucher ? `Total Amount: NPR ${deletingVoucher.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0).toLocaleString()} across ${deletingVoucher.lines.length} ledger lines. Deleting will reverse the account balance impact immediately.` : ''}
+        requiredTimes={3}
+        lockDurationSeconds={3}
+        onClose={() => {
+          setIsDeleteModalOpen(false);
+          setDeletingVoucher(null);
+        }}
+        onConfirm={handleConfirmDelete}
+      />
     </div>
   );
 };

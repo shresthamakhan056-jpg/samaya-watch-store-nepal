@@ -438,140 +438,326 @@ export const AccountingModule: React.FC = () => {
           </div>
 
           {/* Equation Status Bar */}
-          <div className={`p-4 rounded-xl border flex items-center justify-between ${
+          <div className={`p-4 rounded-2xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
             balanceSheet.isBalanced
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
               : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
           }`}>
-            <div className="flex items-center space-x-3">
-              {balanceSheet.isBalanced ? <CheckCircle2 className="w-5 h-5 text-emerald-400" /> : <AlertTriangle className="w-5 h-5 text-rose-400" />}
+            <div className="flex items-start sm:items-center space-x-3">
+              {balanceSheet.isBalanced ? (
+                <CheckCircle2 className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-0.5 sm:mt-0" />
+              ) : (
+                <AlertTriangle className="w-6 h-6 text-rose-400 flex-shrink-0 mt-0.5 sm:mt-0" />
+              )}
               <div>
-                <p className="font-semibold text-sm">
-                  {balanceSheet.isBalanced ? 'Fundamental Accounting Equation Holds (A = L + E)' : 'Balance Sheet Discrepancy'}
-                </p>
-                <p className="text-xs opacity-80">
-                  Total Assets: NPR {balanceSheet.totalAssets.toLocaleString()} | Liabilities + Equity: NPR {(balanceSheet.totalLiabilities + balanceSheet.totalEquity).toLocaleString()}
+                <div className="flex items-center space-x-2">
+                  <p className="font-bold text-sm">
+                    {balanceSheet.isBalanced
+                      ? 'Accounting Equation Balanced: Total Assets = Liabilities + Equity (A = L + E)'
+                      : 'Balance Sheet Mismatch Detected'}
+                  </p>
+                  <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-full uppercase ${
+                    balanceSheet.isBalanced ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                  }`}>
+                    {balanceSheet.isBalanced ? 'Zero Diff (0.00)' : `Diff: NPR ${Math.abs(balanceSheet.difference).toLocaleString()}`}
+                  </span>
+                </div>
+                <p className="text-xs opacity-80 font-mono mt-0.5">
+                  Assets (NPR {balanceSheet.totalAssets.toLocaleString()}) = Liabilities (NPR {balanceSheet.totalLiabilities.toLocaleString()}) + Owner's Capital (NPR {balanceSheet.totalOwnersCapital.toLocaleString()}) + Retained Earnings (NPR {balanceSheet.totalRetainedEarnings.toLocaleString()})
                 </p>
               </div>
             </div>
+
+            <button
+              onClick={handleSyncLedger}
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition flex-shrink-0"
+              title="Force full recalculation of general ledger and trial balance"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
+              <span>Verify & Sync GL</span>
+            </button>
           </div>
 
           {/* Two Column Layout (Assets vs Liabilities & Equity) */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* ASSETS COLUMN */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-400 pb-2 border-b border-slate-800">
-                Assets
-              </h3>
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5 flex flex-col justify-between">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-400 flex items-center space-x-2">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>Assets (सम्पत्ति)</span>
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-cyan-300">
+                    NPR {balanceSheet.totalAssets.toLocaleString()}
+                  </span>
+                </div>
 
-              {/* Current Assets */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-400 mb-2">Current Assets</h4>
-                <div className="space-y-1.5 text-xs">
-                  {balanceSheet.currentAssets.map((a, idx) => (
-                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
-                      <span className="text-slate-300">{a.name}</span>
-                      <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
-                    <span>Subtotal Current Assets:</span>
-                    <span className="font-mono text-cyan-400">
-                      NPR {balanceSheet.currentAssets.reduce((s, a) => s + a.amount, 0).toLocaleString()}
+                {/* Current Assets */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">1. Current Assets (चालु सम्पत्ति)</h4>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Subtotal: NPR {balanceSheet.totalCurrentAssets.toLocaleString()}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              {/* Fixed & Non-Current Assets */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-400 mb-2">Fixed & Non-Current Assets</h4>
-                <div className="space-y-1.5 text-xs">
-                  {balanceSheet.fixedAssets.map((a, idx) => (
-                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
-                      <span className="text-slate-300">{a.name}</span>
-                      <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
+                  <div className="space-y-1.5 text-xs">
+                    {balanceSheet.currentAssets.map((a, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 px-3 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-[11px] text-cyan-400/80 font-bold">{a.code}</span>
+                          <span className="text-slate-300">{a.name}</span>
+                        </div>
+                        <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between py-2 px-3 bg-slate-800/50 border border-slate-700/50 rounded-lg font-bold text-slate-200">
+                      <span className="text-cyan-300">Total Current Assets:</span>
+                      <span className="font-mono text-cyan-300">
+                        NPR {balanceSheet.totalCurrentAssets.toLocaleString()}
+                      </span>
                     </div>
-                  ))}
-                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
-                    <span>Subtotal Fixed Assets:</span>
-                    <span className="font-mono text-cyan-400">
-                      NPR {balanceSheet.fixedAssets.reduce((s, a) => s + a.amount, 0).toLocaleString()}
-                    </span>
                   </div>
                 </div>
+
+                {/* Fixed & Non-Current Assets */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide">2. Fixed Assets (स्थिर सम्पत्ति)</h4>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Net: NPR {balanceSheet.netFixedAssets.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="space-y-1.5 text-xs">
+                    {balanceSheet.fixedAssets.map((a, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 px-3 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-[11px] text-cyan-400/80 font-bold">{a.code}</span>
+                          <span className="text-slate-300">{a.name}</span>
+                        </div>
+                        <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+
+                    {/* Contra-Asset: Accumulated Depreciation */}
+                    <div className="flex justify-between items-center py-1.5 px-3 bg-rose-950/20 border border-rose-900/30 rounded-lg text-rose-305">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[11px] text-rose-400 font-bold">1590</span>
+                        <span className="text-rose-300">Less: Accumulated Depreciation (ह्रासकट्टी)</span>
+                      </div>
+                      <span className="font-mono font-semibold text-rose-400">
+                        (-) NPR {balanceSheet.lessAccumulatedDepreciation.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between py-2 px-3 bg-slate-800/50 border border-slate-700/50 rounded-lg font-bold text-slate-200">
+                      <span className="text-cyan-300">Net Fixed Assets (Book Value):</span>
+                      <span className="font-mono text-cyan-300">
+                        NPR {balanceSheet.netFixedAssets.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Other Assets (if any) */}
+                {balanceSheet.otherAssets && balanceSheet.otherAssets.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wide mb-2">3. Other Non-Current Assets</h4>
+                    <div className="space-y-1.5 text-xs">
+                      {balanceSheet.otherAssets.map((a, idx) => (
+                        <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono text-[11px] text-cyan-400/80 font-bold">{a.code}</span>
+                            <span className="text-slate-300">{a.name}</span>
+                          </div>
+                          <span className="font-mono font-semibold text-white">NPR {a.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Total Assets Footing */}
-              <div className="flex justify-between py-3 px-4 bg-cyan-500/10 border border-cyan-500/30 rounded-xl font-bold text-sm text-white mt-4">
-                <span className="text-cyan-300 uppercase">TOTAL ASSETS (A):</span>
-                <span className="font-mono text-cyan-400">NPR {balanceSheet.totalAssets.toLocaleString()}</span>
+              <div className="flex justify-between items-center py-3.5 px-4 bg-cyan-500/10 border border-cyan-500/40 rounded-xl font-bold text-sm text-white mt-6 shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <Scale className="w-4 h-4 text-cyan-400" />
+                  <span className="text-cyan-300 uppercase tracking-wide">TOTAL ASSETS (A):</span>
+                </div>
+                <span className="font-mono text-lg font-extrabold text-cyan-400">
+                  NPR {balanceSheet.totalAssets.toLocaleString()}
+                </span>
               </div>
             </div>
 
             {/* LIABILITIES & EQUITY COLUMN */}
-            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400 pb-2 border-b border-slate-800">
-                Liabilities & Owner's Equity
-              </h3>
+            <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 space-y-5 flex flex-col justify-between">
+              <div className="space-y-5">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-amber-400 flex items-center space-x-2">
+                    <Building2 className="w-4 h-4" />
+                    <span>Liabilities & Owner's Equity (दायित्व र पुँजी)</span>
+                  </h3>
+                  <span className="text-xs font-mono font-bold text-amber-300">
+                    NPR {(balanceSheet.totalLiabilities + balanceSheet.totalEquity).toLocaleString()}
+                  </span>
+                </div>
 
-              {/* Current Liabilities */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-400 mb-2">Current Liabilities</h4>
-                <div className="space-y-1.5 text-xs">
-                  {balanceSheet.currentLiabilities.map((l, idx) => (
-                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
-                      <span className="text-slate-300">{l.name}</span>
-                      <span className="font-mono font-semibold text-white">NPR {l.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
-                    <span>Subtotal Current Liabilities:</span>
-                    <span className="font-mono text-rose-400">
-                      NPR {balanceSheet.currentLiabilities.reduce((s, l) => s + l.amount, 0).toLocaleString()}
+                {/* Section I: Current Liabilities */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-xs font-bold text-rose-300 uppercase tracking-wide">I. Current Liabilities (चालु दायित्व)</h4>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Subtotal: NPR {balanceSheet.totalCurrentLiabilities.toLocaleString()}
                     </span>
                   </div>
-                </div>
-              </div>
-
-              {/* Long Term Liabilities */}
-              {balanceSheet.longTermLiabilities.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-semibold text-slate-400 mb-2">Long-term Liabilities</h4>
                   <div className="space-y-1.5 text-xs">
-                    {balanceSheet.longTermLiabilities.map((l, idx) => (
-                      <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
-                        <span className="text-slate-300">{l.name}</span>
+                    {balanceSheet.currentLiabilities.map((l, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 px-3 bg-slate-950/40 border border-slate-800/60 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-[11px] text-rose-400/80 font-bold">{l.code}</span>
+                          <span className="text-slate-300">{l.name}</span>
+                        </div>
                         <span className="font-mono font-semibold text-white">NPR {l.amount.toLocaleString()}</span>
                       </div>
                     ))}
+                    <div className="flex justify-between py-2 px-3 bg-slate-800/50 border border-slate-700/50 rounded-lg font-bold text-slate-200">
+                      <span className="text-rose-300">Total Liabilities:</span>
+                      <span className="font-mono text-rose-300">
+                        NPR {balanceSheet.totalLiabilities.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              )}
 
-              {/* Equity Section */}
-              <div>
-                <h4 className="text-xs font-semibold text-slate-400 mb-2">Owner's Equity & Retained Earnings</h4>
-                <div className="space-y-1.5 text-xs">
-                  {balanceSheet.equity.map((e, idx) => (
-                    <div key={idx} className="flex justify-between py-1.5 px-3 bg-slate-950/40 rounded-lg">
-                      <span className="text-slate-300">{e.name}</span>
-                      <span className="font-mono font-semibold text-amber-300">NPR {e.amount.toLocaleString()}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between py-1.5 px-3 bg-slate-800/40 rounded-lg font-semibold text-slate-200">
-                    <span>Total Equity:</span>
-                    <span className="font-mono text-amber-400">
-                      NPR {balanceSheet.totalEquity.toLocaleString()}
+                {/* Section II: Head 1 - Owner's Capital & Equity */}
+                <div className="p-3.5 bg-slate-950/50 border border-amber-500/20 rounded-xl space-y-2.5">
+                  <div className="flex justify-between items-center pb-1.5 border-b border-slate-800">
+                    <h4 className="text-xs font-bold text-amber-300 uppercase tracking-wide flex items-center space-x-1.5">
+                      <span>II. Head: Owner's Equity & Capital (मालिकको पुँजी)</span>
+                    </h4>
+                    <span className="text-[11px] font-mono font-bold text-amber-400">
+                      NPR {balanceSheet.totalOwnersCapital.toLocaleString()}
                     </span>
                   </div>
+
+                  <div className="space-y-1.5 text-xs">
+                    {/* Owner Capital Account 3010 */}
+                    <div className="flex justify-between items-center py-1.5 px-3 bg-slate-900/60 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[11px] text-amber-400 font-bold">3010</span>
+                        <span className="text-slate-200">Owner Initial & Invested Capital</span>
+                      </div>
+                      <span className="font-mono font-semibold text-white">
+                        NPR {balanceSheet.ownerCapital.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Owner Drawings Account 3030 */}
+                    <div className="flex justify-between items-center py-1.5 px-3 bg-rose-950/20 border border-rose-900/30 rounded-lg text-rose-300">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[11px] text-rose-400 font-bold">3030</span>
+                        <span>Less: Owner Drawings / Withdrawals (निकासी)</span>
+                      </div>
+                      <span className="font-mono font-semibold text-rose-400">
+                        (-) NPR {balanceSheet.ownerDrawings.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Other capital items if any */}
+                    {balanceSheet.ownersCapitalItems.filter(i => i.code !== '3010' && i.code !== '3030').map((c, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 px-3 bg-slate-900/60 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-[11px] text-amber-400 font-bold">{c.code}</span>
+                          <span className="text-slate-200">{c.name}</span>
+                        </div>
+                        <span className="font-mono font-semibold text-white">NPR {c.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+
+                    <div className="flex justify-between py-1.5 px-3 bg-amber-500/10 border border-amber-500/20 rounded-lg font-bold text-amber-200 text-xs">
+                      <span>Subtotal Owner's Capital:</span>
+                      <span className="font-mono text-amber-300">
+                        NPR {balanceSheet.totalOwnersCapital.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section III: Head 2 - Retained Earnings & Accumulated Surplus */}
+                <div className="p-3.5 bg-slate-950/50 border border-emerald-500/20 rounded-xl space-y-2.5">
+                  <div className="flex justify-between items-center pb-1.5 border-b border-slate-800">
+                    <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wide flex items-center space-x-1.5">
+                      <span>III. Head: Retained Earnings & Profit (सञ्चित नाफा)</span>
+                    </h4>
+                    <span className="text-[11px] font-mono font-bold text-emerald-400">
+                      NPR {balanceSheet.totalRetainedEarnings.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs">
+                    {/* Beginning Retained Earnings 3020 */}
+                    <div className="flex justify-between items-center py-1.5 px-3 bg-slate-900/60 rounded-lg">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[11px] text-emerald-400 font-bold">3020</span>
+                        <span className="text-slate-200">Retained Earnings (Beginning / Prior Years)</span>
+                      </div>
+                      <span className="font-mono font-semibold text-white">
+                        NPR {balanceSheet.retainedEarningsPrior.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Current Period Net Income from P&L */}
+                    <div className={`flex justify-between items-center py-1.5 px-3 rounded-lg border ${
+                      balanceSheet.currentPeriodNetIncome >= 0
+                        ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300'
+                        : 'bg-rose-950/20 border-rose-800/40 text-rose-300'
+                    }`}>
+                      <div className="flex items-center space-x-2">
+                        <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300">P&L</span>
+                        <span className="font-medium">Net Profit / (Loss) for Current Period</span>
+                      </div>
+                      <span className="font-mono font-bold">
+                        {balanceSheet.currentPeriodNetIncome >= 0 ? '+' : ''} NPR {balanceSheet.currentPeriodNetIncome.toLocaleString()}
+                      </span>
+                    </div>
+
+                    {/* Other Reserves if any */}
+                    {balanceSheet.otherReserves && balanceSheet.otherReserves.map((r, idx) => (
+                      <div key={idx} className="flex justify-between items-center py-1.5 px-3 bg-slate-900/60 rounded-lg">
+                        <div className="flex items-center space-x-2">
+                          <span className="font-mono text-[11px] text-emerald-400 font-bold">{r.code}</span>
+                          <span className="text-slate-200">{r.name}</span>
+                        </div>
+                        <span className="font-mono font-semibold text-white">NPR {r.amount.toLocaleString()}</span>
+                      </div>
+                    ))}
+
+                    <div className="flex justify-between py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg font-bold text-emerald-200 text-xs">
+                      <span>Subtotal Retained Earnings:</span>
+                      <span className="font-mono text-emerald-300">
+                        NPR {balanceSheet.totalRetainedEarnings.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Total Equity Summary */}
+                <div className="flex justify-between py-2 px-3 bg-slate-800/80 border border-slate-700 rounded-lg font-bold text-amber-300 text-xs">
+                  <span>TOTAL OWNER'S EQUITY (II + III):</span>
+                  <span className="font-mono text-sm font-extrabold text-amber-400">
+                    NPR {balanceSheet.totalEquity.toLocaleString()}
+                  </span>
                 </div>
               </div>
 
               {/* Total Liabilities & Equity Footing */}
-              <div className="flex justify-between py-3 px-4 bg-amber-500/10 border border-amber-500/30 rounded-xl font-bold text-sm text-white mt-4">
-                <span className="text-amber-300 uppercase">TOTAL LIABILITIES & EQUITY (L + E):</span>
-                <span className="font-mono text-amber-400">
+              <div className="flex justify-between items-center py-3.5 px-4 bg-amber-500/10 border border-amber-500/40 rounded-xl font-bold text-sm text-white mt-6 shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <Building2 className="w-4 h-4 text-amber-400" />
+                  <span className="text-amber-300 uppercase tracking-wide">TOTAL LIABILITIES & EQUITY (L + E):</span>
+                </div>
+                <span className="font-mono text-lg font-extrabold text-amber-400">
                   NPR {(balanceSheet.totalLiabilities + balanceSheet.totalEquity).toLocaleString()}
                 </span>
               </div>

@@ -418,7 +418,7 @@ export const SalesModule: React.FC = () => {
                     onChange={(e) => setEditPaymentMethod(e.target.value as PaymentMethod)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-100 focus:outline-none"
                   >
-                    <option value="Bank Transfer">Bank Transfer (Nabil)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
                     <option value="eSewa">eSewa Wallet</option>
                     <option value="Cash on Delivery">Cash on Delivery</option>
                     <option value="Cash">Cash in Hand</option>
@@ -586,7 +586,7 @@ export const SalesModule: React.FC = () => {
                     onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-xs text-zinc-100 focus:outline-none"
                   >
-                    <option value="Bank Transfer">Bank Transfer (Nabil)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
                     <option value="eSewa">eSewa Wallet</option>
                     <option value="Cash on Delivery">Cash on Delivery</option>
                     <option value="Cash">Cash in Hand</option>

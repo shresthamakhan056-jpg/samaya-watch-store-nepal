@@ -124,6 +124,76 @@ export interface Purchase {
   }[];
 }
 
+export type SupplyCategory =
+  | 'Packaging Box'
+  | 'Shopping & Gift Bag'
+  | 'Cushion & Pillow Insert'
+  | 'Cleaning & Polishing Cloth'
+  | 'Warranty Card & Sleeve'
+  | 'Strap & Tool Accessories'
+  | 'Showroom & Display'
+  | 'Security Hologram Seal'
+  | 'Shipping & Courier Box'
+  | 'Other Operational Supplies';
+
+export interface SupplyItem {
+  id: string;
+  sku: string;
+  name: string;
+  category: SupplyCategory;
+  unit: string; // 'pcs', 'boxes', 'sets', 'packs', 'rolls'
+  currentStock: number;
+  reorderLevel: number;
+  estimatedUnitCost: number; // in NPR
+  supplierName: string;
+  supplierId?: string;
+  status: 'In Stock' | 'Low Stock' | 'Out of Stock';
+  description?: string;
+  imageUrl?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SupplyPurchaseItem {
+  supplyItemId: string;
+  supplyItemName: string;
+  category: SupplyCategory;
+  quantity: number;
+  unitCost: number;
+  totalCost: number;
+  unit: string;
+}
+
+export interface SupplyPurchase {
+  id: string;
+  purchaseType: 'Packaging & Boxes' | 'Showroom Supplies' | 'Tools & Accessories' | 'Shipping Materials' | 'Marketing & Gift Items' | 'General Store Supplies';
+  supplierId: string;
+  supplierName: string;
+  invoiceNumber: string;
+  purchaseDate: string;
+  cost: number;
+  quantity: number;
+  paymentMethod?: string;
+  paymentAccountCode?: string;
+  accountType?: '1210' | '5020';
+  notes?: string;
+  createdBy: string;
+  items: SupplyPurchaseItem[];
+}
+
+export interface SupplyUsageLog {
+  id: string;
+  supplyItemId: string;
+  supplyItemName: string;
+  quantityUsed: number;
+  unit: string;
+  usedFor: 'Sales Packaging' | 'Showroom Display' | 'Customer Gift' | 'Damaged / Expired' | 'Maintenance' | 'Other';
+  relatedInvoice?: string;
+  notes?: string;
+  date: string;
+  loggedBy: string;
+}
+
 export type WarrantyStatus = 'Active' | 'Expired' | 'Void';
 export type WarrantyActivationStatus = 'Pending' | 'Active' | 'Void';
 
@@ -406,6 +476,7 @@ export interface JournalEntry {
   reversalOfId?: string;
   reversalReason?: string;
   fiscalYearId?: string;
+  updatedAt?: string;
 }
 
 export interface AccountingSettings {

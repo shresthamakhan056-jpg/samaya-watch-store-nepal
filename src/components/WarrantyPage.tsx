@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Search, ShieldCheck, CheckCircle2, AlertCircle, Phone, Watch, Sparkles, QrCode, Wrench, Plus, CheckCircle, Clock, MessageSquare, Send } from 'lucide-react';
+import { Search, ShieldCheck, CheckCircle2, AlertCircle, Phone, Watch, Sparkles, QrCode, Wrench, Plus, CheckCircle, Clock, MessageSquare, Send, Check } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { DigitalWarrantyCard } from './DigitalWarrantyCard';
+import { WarrantyDetailsModal } from './WarrantyDetailsModal';
 import { Warranty } from '../types';
 import { formatWarrantyVerificationRequestMessage, openWhatsApp, OFFICIAL_STORE_WHATSAPP } from '../utils/whatsappService';
+import { formatWarrantyInput } from '../utils/inputMasking';
 
 export const WarrantyPage: React.FC = () => {
   const { warranties, getWarrantyByIdOrMobile, getWarrantiesByMobile, logVerification, submitClaim, claims } = useApp();
@@ -11,6 +13,7 @@ export const WarrantyPage: React.FC = () => {
   const [searched, setSearched] = useState(false);
   const [selectedWarranty, setSelectedWarranty] = useState<Warranty | null>(null);
   const [matchingList, setMatchingList] = useState<Warranty[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Public Claim Submission Modal State
   const [showClaimForm, setShowClaimForm] = useState(false);
@@ -24,13 +27,13 @@ export const WarrantyPage: React.FC = () => {
     const code = params.get('code') || params.get('id') || params.get('mobile');
     if (code) {
       setQuery(code);
-      handleSearch(code);
+      handleSearch(code, true);
     }
   }, [warranties]);
 
   const [queryError, setQueryError] = useState<string | null>(null);
 
-  const handleSearch = (searchVal?: string) => {
+  const handleSearch = (searchVal?: string, openModal = true) => {
     const term = (searchVal !== undefined ? searchVal : query).trim();
     if (!term) return;
 
@@ -41,10 +44,12 @@ export const WarrantyPage: React.FC = () => {
 
     // If query has alphabetical letters and is NOT a warranty number starting with WRN, explicitly reject with warning
     if (hasLetters && !cleanUpper.startsWith('WRN')) {
+      const err = 'Verification by Customer Name is strictly disabled for privacy and anti-counterfeiting security. Please verify using your 10-digit Registered Mobile Number (e.g. 9823680863) or official Warranty Number (e.g. WRN-2026-0101).';
       setSearched(true);
       setSelectedWarranty(null);
       setMatchingList([]);
-      setQueryError('Verification by Customer Name is strictly disabled for privacy and anti-counterfeiting security. Please verify using your 10-digit Registered Mobile Number (e.g. 9823680863) or official Warranty Number (e.g. WRN-2026-0101).');
+      setQueryError(err);
+      if (openModal) setIsModalOpen(true);
       return;
     }
 
@@ -55,16 +60,19 @@ export const WarrantyPage: React.FC = () => {
       setSelectedWarranty(foundDirect);
       setMatchingList([foundDirect]);
       logVerification(foundDirect.id, term.toUpperCase().startsWith('WRN') ? 'Warranty ID' : 'Mobile Search', 'Success');
+      if (openModal) setIsModalOpen(true);
     } else {
       const list = getWarrantiesByMobile(term);
       if (list.length > 0) {
         setMatchingList(list);
         setSelectedWarranty(list[0]);
         logVerification(list[0].id, 'Mobile Search', 'Success');
+        if (openModal) setIsModalOpen(true);
       } else {
         setSelectedWarranty(null);
         setMatchingList([]);
         logVerification(term, 'Warranty ID', 'Not Found');
+        if (openModal) setIsModalOpen(true);
       }
     }
   };
@@ -142,10 +150,30 @@ export const WarrantyPage: React.FC = () => {
               <input
                 type="text"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Enter Registered Mobile Number (e.g. 9823680863) or Warranty Number (WRN-2026-0101)..."
-                className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 rounded-xl pl-12 pr-4 py-3.5 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono"
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setQuery(formatWarrantyInput(val));
+                }}
+                maxLength={20}
+                placeholder="Enter 10-digit Mobile Number (e.g. 9823680863) or Warranty ID..."
+                className="w-full bg-zinc-950 border border-zinc-800 focus:border-amber-500 rounded-xl pl-12 pr-24 py-3.5 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono"
               />
+              {/* Digit count badge / format hint */}
+              <div className="absolute right-3 top-3 flex items-center gap-1 text-[11px] font-mono">
+                {/^\d+$/.test(query) ? (
+                  <span className={`px-2 py-0.5 rounded-md font-bold transition-all ${
+                    query.length === 10
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-zinc-800 text-amber-400 border border-zinc-700'
+                  }`}>
+                    {query.length}/10 digits
+                  </span>
+                ) : query.toUpperCase().startsWith('WRN') ? (
+                  <span className="px-2 py-0.5 rounded-md font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Warranty ID
+                  </span>
+                ) : null}
+              </div>
             </div>
 
             <button
@@ -168,8 +196,13 @@ export const WarrantyPage: React.FC = () => {
           </form>
 
           {/* Quick Search Helper */}
-          <div className="pt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 font-mono">
+          <div className="pt-1 flex flex-wrap items-center justify-between text-xs text-zinc-400 font-mono gap-2">
             <span className="text-[11px] text-amber-400/90 font-semibold">🔒 Security Policy: Verification is permitted exclusively through your Registered Customer Mobile Number or Official Warranty Number.</span>
+            <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+              <span>Accepted formats:</span>
+              <span className="text-zinc-300 bg-zinc-800 px-1.5 py-0.5 rounded">9823680863</span>
+              <span className="text-zinc-300 bg-zinc-800 px-1.5 py-0.5 rounded">WRN-2026-0001</span>
+            </div>
           </div>
         </div>
 
@@ -317,6 +350,15 @@ export const WarrantyPage: React.FC = () => {
         )}
 
       </div>
+
+      {/* AUTOMATIC POPUP WARRANTY DETAILS MODAL */}
+      <WarrantyDetailsModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        query={query}
+        warranties={matchingList}
+        errorMessage={queryError}
+      />
 
       {/* PUBLIC CLAIM SUBMISSION MODAL */}
       {showClaimForm && selectedWarranty && (

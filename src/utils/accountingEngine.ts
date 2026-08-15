@@ -90,6 +90,18 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
     isSystem: true
   },
   {
+    id: 'acc-1210',
+    code: '1210',
+    name: 'Packaging & Operational Supplies Inventory',
+    category: 'Assets',
+    group: 'Current Assets',
+    type: 'Inventory',
+    openingBalance: 0,
+    balance: 0,
+    description: 'Carrying value of luxury watch presentation boxes, gift bags, cushions, sleeves and supplies.',
+    isSystem: true
+  },
+  {
     id: 'acc-1300',
     code: '1300',
     name: 'Input VAT (Tax Paid on Purchases)',
@@ -630,19 +642,34 @@ export interface BalanceSheetReport {
   currentAssets: { code: string; name: string; amount: number }[];
   totalCurrentAssets: number;
   fixedAssets: { code: string; name: string; amount: number }[];
+  grossFixedAssets: number;
   lessAccumulatedDepreciation: number;
   netFixedAssets: number;
+  otherAssets: { code: string; name: string; amount: number }[];
+  totalOtherAssets: number;
   totalAssets: number;
 
   currentLiabilities: { code: string; name: string; amount: number }[];
   totalCurrentLiabilities: number;
   longTermLiabilities: { code: string; name: string; amount: number }[];
+  totalLongTermLiabilities: number;
   totalLiabilities: number;
 
-  equity: { code: string; name: string; amount: number }[];
-  equityItems: { code: string; name: string; amount: number }[];
+  // Head 1: Owner's Equity / Capital Section
+  ownersCapitalItems: { code: string; name: string; amount: number }[];
+  ownerCapital: number;
+  ownerDrawings: number;
+  totalOwnersCapital: number;
+
+  // Head 2: Retained Earnings & Accumulated Surplus
   retainedEarningsPrior: number;
   currentPeriodNetIncome: number;
+  otherReserves: { code: string; name: string; amount: number }[];
+  totalRetainedEarnings: number;
+
+  // Combined Equity Line Items for Statements
+  equity: { code: string; name: string; amount: number }[];
+  equityItems: { code: string; name: string; amount: number }[];
   totalEquity: number;
 
   totalLiabilitiesAndEquity: number;
@@ -1039,7 +1066,9 @@ export class AccountingEngine {
     accounts: Account[]
   ): ProfitAndLossReport {
     const balances: Record<string, number> = {};
-    accounts.forEach(a => { balances[a.code] = 0; });
+    accounts.forEach(a => {
+      balances[a.code] = (a as any).openingBalance || 0;
+    });
 
     journalEntries.forEach(entry => {
       if (entry.isReversed) return;
@@ -1062,11 +1091,11 @@ export class AccountingEngine {
     const totalGrossRevenue = grossRevenue + otherRevenue;
 
     const discountsGiven = balances['5030'] || 0;
-    const netRevenue = Math.max(0, totalGrossRevenue - discountsGiven);
+    const netRevenue = totalGrossRevenue - discountsGiven;
 
     const cogs = balances['5010'] || 0;
     const grossProfit = netRevenue - cogs;
-    const grossMarginPct = netRevenue > 0 ? (grossProfit / netRevenue) * 100 : 0;
+    const grossMarginPct = netRevenue !== 0 ? (grossProfit / netRevenue) * 100 : 0;
 
     const revenueBreakdown = Object.keys(balances)
       .filter(k => k.startsWith('4') && (balances[k] || 0) !== 0)
@@ -1122,11 +1151,11 @@ export class AccountingEngine {
       }));
 
     const operatingProfit = grossProfit - totalOperatingExpenses;
-    const operatingMarginPct = netRevenue > 0 ? (operatingProfit / netRevenue) * 100 : 0;
+    const operatingMarginPct = netRevenue !== 0 ? (operatingProfit / netRevenue) * 100 : 0;
 
     const taxExpense = 0;
     const netProfit = operatingProfit - taxExpense;
-    const netMarginPct = netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0;
+    const netMarginPct = netRevenue !== 0 ? (netProfit / netRevenue) * 100 : 0;
 
     return {
       revenue: netRevenue,
@@ -1155,6 +1184,9 @@ export class AccountingEngine {
   /**
    * Generates Balance Sheet
    * Strict validation: Assets === Liabilities + Equity
+   * Provides detailed breakdown under:
+   * 1. Owner's Equity / Capital Section
+   * 2. Retained Earnings & Accumulated Surplus Section
    */
   public static generateBalanceSheet(
     journalEntries: JournalEntry[],
@@ -1188,15 +1220,29 @@ export class AccountingEngine {
     // 2. Fixed Assets (1500 - 1589)
     const fixedAssets: { code: string; name: string; amount: number }[] = [];
     let grossFixedAssets = 0;
-    const accumulatedDepr = Math.abs(accBalances['1590'] || 0);
+    // Accumulated depreciation is a contra-asset (credit balance represented as negative in Asset formula: 0 - credit)
+    const rawAccumulatedDepr = accBalances['1590'] || 0;
+    const accumulatedDepr = Math.abs(rawAccumulatedDepr);
 
-    // 3. Liabilities (2000s)
+    // 3. Other Non-Current Assets (1600+)
+    const otherAssets: { code: string; name: string; amount: number }[] = [];
+    let totalOtherAssets = 0;
+
+    // 4. Liabilities (2000s)
     const currentLiabilities: { code: string; name: string; amount: number }[] = [];
     let totalCurrentLiabilities = 0;
+    const longTermLiabilities: { code: string; name: string; amount: number }[] = [];
+    let totalLongTermLiabilities = 0;
 
-    // 4. Equity (3000s)
-    const equityItems: { code: string; name: string; amount: number }[] = [];
-    let totalBaseEquity = 0;
+    // 5. Owner's Capital & Equity Items (Head 1: Owner's Equity)
+    const ownersCapitalItems: { code: string; name: string; amount: number }[] = [];
+    let ownerCapital = 0;
+    let ownerDrawings = 0;
+    let otherCapital = 0;
+
+    // 6. Retained Earnings & Reserves (Head 2: Retained Earnings)
+    const otherReserves: { code: string; name: string; amount: number }[] = [];
+    let totalOtherReserves = 0;
 
     Object.keys(accBalances).sort().forEach(code => {
       const amt = accBalances[code];
@@ -1210,53 +1256,98 @@ export class AccountingEngine {
         } else if (num >= 1500 && num < 1590) {
           fixedAssets.push({ code, name: acc.name, amount: amt });
           grossFixedAssets += amt;
+        } else if (num > 1590) {
+          otherAssets.push({ code, name: acc.name, amount: amt });
+          totalOtherAssets += amt;
         }
       } else if (code.startsWith('2')) {
-        currentLiabilities.push({ code, name: acc.name, amount: amt });
-        totalCurrentLiabilities += amt;
+        const num = parseInt(code, 10);
+        if (num < 2500) {
+          currentLiabilities.push({ code, name: acc.name, amount: amt });
+          totalCurrentLiabilities += amt;
+        } else {
+          longTermLiabilities.push({ code, name: acc.name, amount: amt });
+          totalLongTermLiabilities += amt;
+        }
       } else if (code.startsWith('3')) {
-        if (code !== '3020') {
-          equityItems.push({ code, name: acc.name, amount: amt });
-          totalBaseEquity += amt;
+        if (code === '3010') {
+          ownerCapital += amt;
+          ownersCapitalItems.push({ code, name: acc.name, amount: amt });
+        } else if (code === '3030') {
+          // Owner drawings is a contra-equity with debit balance -> amt will be negative in Credit-Debit formula
+          ownerDrawings += Math.abs(amt);
+          ownersCapitalItems.push({ code, name: `${acc.name} (Withdrawals)`, amount: -Math.abs(amt) });
+        } else if (code === '3020') {
+          // Handled under Retained Earnings
+        } else if (code.startsWith('304') || code.startsWith('305')) {
+          otherReserves.push({ code, name: acc.name, amount: amt });
+          totalOtherReserves += amt;
+        } else {
+          otherCapital += amt;
+          ownersCapitalItems.push({ code, name: acc.name, amount: amt });
         }
       }
     });
 
-    const netFixedAssets = Math.max(0, grossFixedAssets - accumulatedDepr);
-    const totalAssets = totalCurrentAssets + netFixedAssets;
+    const netFixedAssets = grossFixedAssets - accumulatedDepr;
+    const totalAssets = totalCurrentAssets + netFixedAssets + totalOtherAssets;
 
-    const totalLiabilities = totalCurrentLiabilities;
+    const totalLiabilities = totalCurrentLiabilities + totalLongTermLiabilities;
+
+    // Head 1: Total Owner's Capital
+    const totalOwnersCapital = ownerCapital - ownerDrawings + otherCapital;
+
+    // Head 2: Total Retained Earnings & Reserves
     const retainedEarningsPrior = accBalances['3020'] || 0;
     const currentPeriodNetIncome = pnl.netProfit;
+    const totalRetainedEarnings = retainedEarningsPrior + currentPeriodNetIncome + totalOtherReserves;
 
-    const totalEquity = totalBaseEquity + retainedEarningsPrior + currentPeriodNetIncome;
+    // Total Equity = Owner's Capital + Retained Earnings & Reserves
+    const totalEquity = totalOwnersCapital + totalRetainedEarnings;
     const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
     const diff = Math.round((totalAssets - totalLiabilitiesAndEquity) * 100) / 100;
     const isBalanced = Math.abs(diff) <= 0.05;
 
+    // Combined Equity List for generic views & exports
     const combinedEquityList: { code: string; name: string; amount: number }[] = [
-      ...equityItems,
-      { code: '3020', name: 'Retained Earnings (Prior)', amount: retainedEarningsPrior },
-      { code: 'PNL-CUR', name: 'Net Income (Current Period)', amount: currentPeriodNetIncome }
-    ].filter(e => e.amount !== 0);
+      ...ownersCapitalItems,
+      { code: '3020', name: 'Retained Earnings (Beginning / Prior)', amount: retainedEarningsPrior },
+      { code: 'PNL-CUR', name: 'Net Income / (Loss) for Current Period', amount: currentPeriodNetIncome },
+      ...otherReserves
+    ];
 
     return {
       currentAssets,
       totalCurrentAssets: Math.round(totalCurrentAssets * 100) / 100,
       fixedAssets,
+      grossFixedAssets: Math.round(grossFixedAssets * 100) / 100,
       lessAccumulatedDepreciation: accumulatedDepr,
       netFixedAssets: Math.round(netFixedAssets * 100) / 100,
+      otherAssets,
+      totalOtherAssets: Math.round(totalOtherAssets * 100) / 100,
       totalAssets: Math.round(totalAssets * 100) / 100,
+
       currentLiabilities,
       totalCurrentLiabilities: Math.round(totalCurrentLiabilities * 100) / 100,
-      longTermLiabilities: [],
+      longTermLiabilities,
+      totalLongTermLiabilities: Math.round(totalLongTermLiabilities * 100) / 100,
       totalLiabilities: Math.round(totalLiabilities * 100) / 100,
+
+      ownersCapitalItems,
+      ownerCapital: Math.round(ownerCapital * 100) / 100,
+      ownerDrawings: Math.round(ownerDrawings * 100) / 100,
+      totalOwnersCapital: Math.round(totalOwnersCapital * 100) / 100,
+
+      retainedEarningsPrior: Math.round(retainedEarningsPrior * 100) / 100,
+      currentPeriodNetIncome: Math.round(currentPeriodNetIncome * 100) / 100,
+      otherReserves,
+      totalRetainedEarnings: Math.round(totalRetainedEarnings * 100) / 100,
+
       equity: combinedEquityList,
-      equityItems,
-      retainedEarningsPrior,
-      currentPeriodNetIncome,
+      equityItems: ownersCapitalItems,
       totalEquity: Math.round(totalEquity * 100) / 100,
+
       totalLiabilitiesAndEquity: Math.round(totalLiabilitiesAndEquity * 100) / 100,
       difference: diff,
       balanceDifference: diff,

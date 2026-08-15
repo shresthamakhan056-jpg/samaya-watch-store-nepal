@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, ShoppingBag, Package, Layers, ShieldCheck, Calculator, Users, Sparkles, BarChart3, UserCheck, ShieldAlert, Search, X, Globe, Eye, Wrench, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Layers, ShieldCheck, Calculator, Users, Sparkles, BarChart3, UserCheck, ShieldAlert, Search, X, Globe, Eye, Wrench, AlertTriangle, Box } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { AdminDashboard } from './AdminDashboard';
 import { SalesModule } from './SalesModule';
 import { PurchaseModule } from './PurchaseModule';
+import { SuppliesModule } from './SuppliesModule';
 import { InventoryModule } from './InventoryModule';
 import { WarrantyModule } from './WarrantyModule';
 import { AccountingModule } from './AccountingModule';
@@ -20,7 +21,7 @@ interface AdminLayoutProps {
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
   const { currentUser, setCurrentUser, users, globalSearch, loginStaffUser, homepageContent, updateHomepageContent } = useApp();
   const [adminTab, setAdminTab] = useState<
-    'dashboard' | 'sales' | 'purchases' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit'
+    'dashboard' | 'sales' | 'purchases' | 'supplies' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit'
   >('dashboard');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,6 +148,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'sales', label: 'Sales & Invoices', icon: ShoppingBag, badge: 'Auto ERP' },
     { id: 'purchases', label: 'Stock Procurement', icon: Package },
+    { id: 'supplies', label: 'Boxes & Supplies', icon: Box, badge: 'Non-Watch' },
     { id: 'inventory', label: 'Watch Inventory', icon: Layers },
     { id: 'warranty', label: 'Digital Warranties', icon: ShieldCheck, badge: 'QR Code' },
     { id: 'accounting', label: 'Financial Accounting', icon: Calculator, badge: 'Double Entry' },
@@ -386,6 +388,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
         )}
         {adminTab === 'sales' && <SalesModule />}
         {adminTab === 'purchases' && <PurchaseModule />}
+        {adminTab === 'supplies' && <SuppliesModule />}
         {adminTab === 'inventory' && <InventoryModule />}
         {adminTab === 'warranty' && <WarrantyModule />}
         {adminTab === 'accounting' && <AccountingModule />}

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { ShieldCheck, Watch, ShoppingBag, Radio, Sparkles, UserCheck, Menu, X, Phone } from 'lucide-react';
+import { ShieldCheck, Watch, ShoppingBag, Radio, Sparkles, UserCheck, Menu, X, Phone, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
 import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
+import { WarrantyDetailsModal } from './WarrantyDetailsModal';
+import { Warranty } from '../types';
 
 interface HeaderProps {
   activeTab: string;
@@ -18,12 +20,45 @@ export const Header: React.FC<HeaderProps> = ({
   isAdminOpen,
   setIsAdminOpen
 }) => {
-  const { homepageContent } = useApp();
+  const { homepageContent, getWarrantyByIdOrMobile, getWarrantiesByMobile } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isHeaderSearchOpen, setIsHeaderSearchOpen] = useState(false);
+  const [headerSearchQuery, setHeaderSearchQuery] = useState('');
+  const [isWarrantyModalOpen, setIsWarrantyModalOpen] = useState(false);
+  const [modalWarranties, setModalWarranties] = useState<Warranty[]>([]);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const tiktokUrl = resolveSocialUrl('tiktok', homepageContent.tiktokLink);
   const instagramUrl = resolveSocialUrl('instagram', homepageContent.instagramLink);
   const facebookUrl = resolveSocialUrl('facebook', homepageContent.facebookLink);
+
+  const handleHeaderSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const raw = headerSearchQuery.trim();
+    if (!raw) return;
+
+    setModalError(null);
+    const cleanUpper = raw.toUpperCase();
+    const hasLetters = /[A-Za-z]/.test(raw);
+
+    if (hasLetters && !cleanUpper.startsWith('WRN')) {
+      setModalWarranties([]);
+      setModalError('Verification by Customer Name is strictly disabled for privacy and anti-counterfeiting security. Please enter your Registered 10-digit Mobile Number (e.g. 9823680863) or official Warranty Number (e.g. WRN-2026-0101).');
+      setIsWarrantyModalOpen(true);
+      return;
+    }
+
+    const singleMatch = getWarrantyByIdOrMobile(raw);
+    if (singleMatch) {
+      setModalWarranties([singleMatch]);
+    } else {
+      const mobileList = getWarrantiesByMobile(raw);
+      setModalWarranties(mobileList);
+    }
+
+    setIsWarrantyModalOpen(true);
+    setIsHeaderSearchOpen(false);
+  };
 
   const navItems = [
     { id: 'home', label: 'Home' },

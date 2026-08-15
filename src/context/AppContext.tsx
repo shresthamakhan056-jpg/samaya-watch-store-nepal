@@ -7,6 +7,11 @@ import {
   Supplier,
   Sale,
   Purchase,
+  SupplyItem,
+  SupplyCategory,
+  SupplyPurchase,
+  SupplyPurchaseItem,
+  SupplyUsageLog,
   Warranty,
   WarrantyServiceHistory,
   WarrantyClaim,
@@ -47,6 +52,8 @@ import {
   INITIAL_SUPPLIERS,
   INITIAL_SALES,
   INITIAL_PURCHASES,
+  INITIAL_SUPPLY_ITEMS,
+  INITIAL_SUPPLY_PURCHASES,
   INITIAL_WARRANTIES,
   INITIAL_ACCOUNTS,
   INITIAL_JOURNAL_ENTRIES,
@@ -97,8 +104,12 @@ interface AppContextType {
   // Customers & Suppliers
   customers: Customer[];
   addCustomer: (customer: Omit<Customer, 'id' | 'totalPurchases' | 'createdAt'>) => Customer;
+  updateCustomer: (customer: Customer) => void;
+  deleteCustomer: (id: string) => { success: boolean; error?: string };
   suppliers: Supplier[];
   addSupplier: (supplier: Omit<Supplier, 'id' | 'balanceDue'>) => void;
+  updateSupplier: (supplier: Supplier) => void;
+  deleteSupplier: (id: string) => { success: boolean; error?: string };
 
   // Sales & Automation
   sales: Sale[];
@@ -124,14 +135,19 @@ interface AppContextType {
   warranties: Warranty[];
   getWarrantyByIdOrMobile: (query: string) => Warranty | undefined;
   getWarrantiesByMobile: (mobile: string) => Warranty[];
+  updateWarranty: (warrantyId: string, updatedData: Partial<Warranty>) => void;
   updateWarrantyStatus: (warrantyId: string, status: 'Active' | 'Expired' | 'Void', remarks?: string) => void;
   activateWarranty: (warrantyId: string) => void;
+  deleteWarranty: (warrantyId: string) => void;
   addServiceHistory: (warrantyId: string, service: Omit<WarrantyServiceHistory, 'id' | 'warrantyId'>) => void;
+  deleteServiceHistory: (warrantyId: string, serviceId: string) => void;
 
   // Automated Warranty Claims Pipeline
   claims: WarrantyClaim[];
   submitClaim: (claimData: Omit<WarrantyClaim, 'id' | 'status' | 'submittedAt'>) => WarrantyClaim | { error: string };
+  updateClaim: (claimId: string, updatedData: Partial<WarrantyClaim>) => void;
   updateClaimStatus: (claimId: string, status: ClaimStatus, details?: any) => void;
+  deleteClaim: (claimId: string) => void;
   addInspection: (claimId: string, inspection: NonNullable<WarrantyClaim['inspection']>) => void;
   approveClaim: (claimId: string, approval: NonNullable<WarrantyClaim['approval']>) => void;
   updateRepair: (claimId: string, repair: NonNullable<WarrantyClaim['repair']>) => void;
@@ -141,8 +157,10 @@ interface AppContextType {
   // Replacements & Extensions
   replacements: WarrantyReplacement[];
   createReplacement: (rep: Omit<WarrantyReplacement, 'id' | 'date'>) => WarrantyReplacement;
+  deleteReplacement: (id: string) => void;
   extensions: WarrantyExtension[];
   extendWarranty: (ext: Omit<WarrantyExtension, 'id' | 'createdAt'>) => WarrantyExtension;
+  deleteExtension: (id: string) => void;
 
   // Verification Audit Logs & Configuration
   verificationLogs: VerificationLog[];
@@ -152,7 +170,7 @@ interface AppContextType {
   warrantySettings: WarrantySettings;
   updateWarrantySettings: (settings: Partial<WarrantySettings>) => void;
 
-  // Purchases
+  // Watch Stock Purchases
   purchases: Purchase[];
   createPurchase: (purchaseData: {
     supplierId: string;
@@ -164,7 +182,32 @@ interface AppContextType {
     paymentAccountCode?: string;
     items: { productId: string; productName: string; quantity: number; unitCost: number }[];
   }) => void;
+  updatePurchase: (id: string, updatedData: Partial<Purchase>) => void;
   deletePurchase: (id: string) => void;
+
+  // Non-Watch Supplies & Packaging Procurement
+  supplyItems: SupplyItem[];
+  createSupplyItem: (itemData: Omit<SupplyItem, 'id' | 'createdAt' | 'status'>) => SupplyItem;
+  updateSupplyItem: (id: string, updatedData: Partial<SupplyItem>) => void;
+  deleteSupplyItem: (id: string) => { success: boolean; error?: string };
+  supplyPurchases: SupplyPurchase[];
+  createSupplyPurchase: (purchaseData: {
+    purchaseType: SupplyPurchase['purchaseType'];
+    supplierId: string;
+    invoiceNumber: string;
+    purchaseDate: string;
+    cost: number;
+    quantity: number;
+    paymentMethod?: string;
+    paymentAccountCode?: string;
+    accountType?: '1210' | '5020';
+    notes?: string;
+    items: SupplyPurchaseItem[];
+  }) => void;
+  updateSupplyPurchase: (id: string, updatedData: Partial<SupplyPurchase>) => void;
+  deleteSupplyPurchase: (id: string) => void;
+  supplyUsageLogs: SupplyUsageLog[];
+  logSupplyUsage: (usage: Omit<SupplyUsageLog, 'id' | 'date' | 'loggedBy'>) => void;
 
   // Accounting & Double-Entry Engine
   accounts: Account[];
@@ -173,16 +216,24 @@ interface AppContextType {
   deleteAccount: (id: string, force?: boolean) => { success: boolean; error?: string };
   journalEntries: JournalEntry[];
   addJournalEntry: (entry: Omit<JournalEntry, 'id' | 'entryNumber'>) => void;
+  updateJournalEntry: (entryId: string, updatedData: Partial<JournalEntry>) => JournalEntry | { error: string };
+  deleteJournalEntry: (entryId: string) => { success: boolean; error?: string };
   postVoucher: (voucher: Omit<JournalEntry, 'id' | 'entryNumber'> & { entryNumber?: string }) => { entry?: JournalEntry; error?: string };
   reverseJournalEntry: (entryId: string, reason: string) => JournalEntry | { error: string };
   syncJournalEntriesAndAccounts: () => { entriesCount: number; newEntriesCreated: number; accountsCount: number };
   fiscalYears: FiscalYear[];
   addFiscalYear: (fy: Omit<FiscalYear, 'id'>) => void;
+  updateFiscalYear: (fy: FiscalYear) => void;
+  deleteFiscalYear: (id: string) => void;
   closeFiscalYear: (id: string) => { success?: boolean; entryNumber?: string; error?: string };
   costCenters: CostCenter[];
   addCostCenter: (cc: Omit<CostCenter, 'id'>) => void;
+  updateCostCenter: (cc: CostCenter) => void;
+  deleteCostCenter: (id: string) => void;
   fixedAssets: FixedAsset[];
   addFixedAsset: (asset: Omit<FixedAsset, 'id'>) => void;
+  updateFixedAsset: (asset: FixedAsset) => void;
+  deleteFixedAsset: (id: string) => void;
   runAssetDepreciation: (assetId: string) => JournalEntry | { error: string };
   resetAccountsToDefault: () => void;
 
@@ -198,6 +249,8 @@ interface AppContextType {
 
   // Audit Logs
   auditLogs: AuditLog[];
+  deleteAuditLog: (id: string) => void;
+  clearAuditLogs: () => void;
   logAction: (action: string, module: string, details: string) => void;
 
   // Utilities
@@ -295,72 +348,88 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const saveProductsCloud = (next: Product[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'products'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { products: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'products'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Products cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { products: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveSalesCloud = (next: Sale[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'sales'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { sales: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'sales'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Sales cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { sales: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveCustomersCloud = (next: Customer[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_customers`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'customers'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { customers: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'customers'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Customers cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { customers: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveWarrantiesCloud = (next: Warranty[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranties`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'warranties'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { warranties: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'warranties'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Warranties cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { warranties: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const savePurchasesCloud = (next: Purchase[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_purchases`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'purchases'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { purchases: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'purchases'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Purchases cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { purchases: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveUsersCloud = (next: User[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'users'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { users: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'users'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Users cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { users: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveAccountsCloud = (next: Account[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'accounts'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { accounts: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'accounts'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Accounts cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { accounts: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveJournalEntriesCloud = (next: JournalEntry[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_journal_entries`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'journalEntries'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { journalEntries: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'journalEntries'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Journal entries cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { journalEntries: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
   const saveSuppliersCloud = (next: Supplier[]) => {
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_suppliers`, JSON.stringify(next));
     if (!isQuotaExceededRef.current) {
-      setDoc(doc(db, 'erp_store', 'suppliers'), { items: next, updatedAt: new Date().toISOString() }).catch(console.error);
-      setDoc(doc(db, 'erp_store', 'data'), { suppliers: next, updatedAt: new Date().toISOString() }, { merge: true }).catch(console.error);
+      setDoc(doc(db, 'erp_store', 'suppliers'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Suppliers cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { suppliers: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
+    }
+  };
+
+  const saveSupplyItemsCloud = (next: SupplyItem[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_items`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'supply_items'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Supply items cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { supplyItems: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
+    }
+  };
+
+  const saveSupplyPurchasesCloud = (next: SupplyPurchase[]) => {
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_purchases`, JSON.stringify(next));
+    if (!isQuotaExceededRef.current) {
+      setDoc(doc(db, 'erp_store', 'supply_purchases'), { items: next, updatedAt: new Date().toISOString() }).catch((err) => console.log('Supply purchases cloud sync notice:', err));
+      setDoc(doc(db, 'erp_store', 'data'), { supplyPurchases: next, updatedAt: new Date().toISOString() }, { merge: true }).catch((err) => console.log('ERP data cloud sync notice:', err));
     }
   };
 
@@ -518,10 +587,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           setWarranties(data.warranties);
         }
         if (data.accounts && Array.isArray(data.accounts) && data.accounts.length > 0) {
-          setAccounts(data.accounts);
+          const sanitizedAccounts = data.accounts.filter(
+            (a: Account) => a.id !== 'acc-1020' && a.code !== '1020' && !a.name?.toLowerCase().includes('nabil bank')
+          );
+          setAccounts(sanitizedAccounts);
         }
         if (data.journalEntries && Array.isArray(data.journalEntries) && data.journalEntries.length > 0) {
-          setJournalEntries(data.journalEntries);
+          const sanitizedEntries = data.journalEntries.filter(
+            (je: JournalEntry) => !je.lines?.some(l => l.accountId === 'acc-1020' || l.accountCode === '1020' || l.accountName?.toLowerCase().includes('nabil'))
+          );
+          setJournalEntries(sanitizedEntries);
         }
         if (data.auditLogs && Array.isArray(data.auditLogs)) {
           setAuditLogs(data.auditLogs);
@@ -622,8 +697,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!saved) return INITIAL_WARRANTIES;
     try {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed)) {
-        return parsed.filter((w: any) => w.id !== 'WRN-2026-0101');
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
       }
       return INITIAL_WARRANTIES;
     } catch {
@@ -637,7 +712,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const parsed: Account[] = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        return parsed.filter((a: Account) => a.id !== 'acc-1020' && a.code !== '1020' && !a.name?.toLowerCase().includes('nabil bank'));
       }
       return INITIAL_ACCOUNTS;
     } catch {
@@ -651,7 +726,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const parsed: JournalEntry[] = JSON.parse(saved);
       if (Array.isArray(parsed)) {
-        return parsed.filter(je => !je.reference?.includes('pur-1785862946231-ddxqb') && je.id !== 'pur-1785862946231-ddxqb');
+        return parsed
+          .filter(je => !je.reference?.includes('pur-1785862946231-ddxqb') && je.id !== 'pur-1785862946231-ddxqb')
+          .filter(je => !je.lines?.some(l => l.accountId === 'acc-1020' || l.accountCode === '1020' || l.accountName?.toLowerCase().includes('nabil')));
       }
       return INITIAL_JOURNAL_ENTRIES;
     } catch {
@@ -708,6 +785,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return saved ? JSON.parse(saved) : INITIAL_WARRANTY_SETTINGS;
   });
 
+  const [supplyItems, setSupplyItems] = useState<SupplyItem[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_supply_items`);
+    if (!saved) return INITIAL_SUPPLY_ITEMS;
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_SUPPLY_ITEMS;
+    } catch {
+      return INITIAL_SUPPLY_ITEMS;
+    }
+  });
+
+  const [supplyPurchases, setSupplyPurchases] = useState<SupplyPurchase[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_supply_purchases`);
+    if (!saved) return INITIAL_SUPPLY_PURCHASES;
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : INITIAL_SUPPLY_PURCHASES;
+    } catch {
+      return INITIAL_SUPPLY_PURCHASES;
+    }
+  });
+
+  const [supplyUsageLogs, setSupplyUsageLogs] = useState<SupplyUsageLog[]>(() => {
+    const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_supply_usage_logs`);
+    if (!saved) return [];
+    try {
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_audit_logs`);
     if (!saved) return INITIAL_AUDIT_LOGS;
@@ -742,6 +852,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(banners));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_videos`, JSON.stringify(videos));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(homepageContent));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_items`, JSON.stringify(supplyItems));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_purchases`, JSON.stringify(supplyPurchases));
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_usage_logs`, JSON.stringify(supplyUsageLogs));
     localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs));
 
     // Do not re-push if remote data not loaded yet, or if this state update was triggered by an incoming Firestore snapshot, or if quota is exceeded
@@ -759,6 +872,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         customers,
         suppliers,
         purchases,
+        supplyItems,
+        supplyPurchases,
         warranties,
         claims,
         replacements,
@@ -781,7 +896,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return () => clearTimeout(timer);
   }, [users, products, customers, suppliers, sales, purchases, warranties, claims, replacements, extensions, verificationLogs, notificationTemplates, warrantySettings, accounts, journalEntries, banners, videos, homepageContent, auditLogs]);
 
-  // Purge all legacy dummy data and hardcoded dummy figures on startup
+  // Purge all legacy dummy data, hardcoded figures, and deleted account heads (Nabil Bank acc-1020) on startup
   useEffect(() => {
     // 1. Purge dummy purchases
     setPurchases(prev => {
@@ -793,15 +908,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return prev;
     });
 
-    // 2. Purge dummy journal entries
+    // 2. Purge dummy journal entries & any entries referencing removed account heads (like 1020 Nabil Bank)
+    let cleanedEntries: JournalEntry[] = [];
     setJournalEntries(prev => {
-      const filtered = prev.filter(je => 
-        je.id !== 'je-pur-gongabu-20260802' && 
-        je.id !== 'pur-1785862946231-ddxqb' && 
-        je.reference !== 'GWS-2026-0802' &&
-        !je.description?.includes('pur-1785862946231-ddxqb')
-      );
-      if (filtered.length !== prev.length) {
+      const filtered = prev
+        .filter(je => 
+          je.id !== 'je-pur-gongabu-20260802' && 
+          je.id !== 'pur-1785862946231-ddxqb' && 
+          je.reference !== 'GWS-2026-0802' &&
+          !je.description?.includes('pur-1785862946231-ddxqb')
+        )
+        .map(je => ({
+          ...je,
+          lines: (je.lines || []).filter(l => 
+            l.accountId !== 'acc-1020' && 
+            l.accountCode !== '1020' && 
+            !l.accountName?.toLowerCase().includes('nabil bank')
+          )
+        }))
+        .filter(je => {
+          if (!je.lines || je.lines.length < 2) return false;
+          const totalDebit = je.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+          const totalCredit = je.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+          return Math.abs(totalDebit - totalCredit) < 0.01;
+        });
+
+      cleanedEntries = filtered;
+      if (filtered.length !== prev.length || JSON.stringify(filtered) !== JSON.stringify(prev)) {
         saveJournalEntriesCloud(filtered);
         return filtered;
       }
@@ -818,21 +951,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return prev;
     });
 
-    // 4. Ensure accounts opening balances are zeroed and clean
+    // 4. Purge legacy removed accounts (acc-1020) and recalculate clean balances
     setAccounts(prevAccounts => {
-      let updated = false;
-      const cleaned = prevAccounts.map(a => {
-        // Zero out old hardcoded opening balances if they existed
-        if (a.openingBalance && a.openingBalance > 0) {
-          updated = true;
-          return { ...a, openingBalance: 0 };
-        }
-        return a;
+      const filteredAccounts = prevAccounts.filter(
+        a => a.id !== 'acc-1020' && a.code !== '1020' && !a.name?.toLowerCase().includes('nabil bank')
+      );
+
+      const entriesToUse = cleanedEntries.length > 0 ? cleanedEntries : journalEntries;
+      const accountBalancesMap: Record<string, number> = {};
+
+      entriesToUse.forEach(je => {
+        if (je.isReversed) return;
+        je.lines?.forEach(line => {
+          if (!accountBalancesMap[line.accountCode]) {
+            accountBalancesMap[line.accountCode] = 0;
+          }
+          const accDef = filteredAccounts.find(a => a.code === line.accountCode);
+          const category = accDef?.category || (line.accountCode.startsWith('1') || line.accountCode.startsWith('5') ? 'Assets' : 'Revenue');
+
+          if (category === 'Assets' || category === 'Expenses') {
+            accountBalancesMap[line.accountCode] += (Number(line.debit) || 0) - (Number(line.credit) || 0);
+          } else {
+            accountBalancesMap[line.accountCode] += (Number(line.credit) || 0) - (Number(line.debit) || 0);
+          }
+        });
       });
 
-      if (updated) {
-        saveAccountsCloud(cleaned);
-        return cleaned;
+      const next = filteredAccounts.map(a => ({
+        ...a,
+        openingBalance: 0,
+        balance: accountBalancesMap[a.code] || 0
+      }));
+
+      if (next.length !== prevAccounts.length || JSON.stringify(next) !== JSON.stringify(prevAccounts)) {
+        saveAccountsCloud(next);
+        return next;
       }
       return prevAccounts;
     });
@@ -1137,6 +1290,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newCust;
   };
 
+  const updateCustomer = (customer: Customer) => {
+    setCustomers(prev => {
+      const next = prev.map(c => c.id === customer.id ? customer : c);
+      saveCustomersCloud(next);
+      return next;
+    });
+    logAction('Updated Customer', 'Customer CRM', `Updated customer ${customer.name} (${customer.mobile})`);
+  };
+
+  const deleteCustomer = (id: string): { success: boolean; error?: string } => {
+    const target = customers.find(c => c.id === id);
+    if (!target) return { success: false, error: 'Customer not found' };
+
+    setCustomers(prev => {
+      const next = prev.filter(c => c.id !== id);
+      saveCustomersCloud(next);
+      return next;
+    });
+    logAction('Deleted Customer', 'Customer CRM', `Deleted customer ${target.name} (${target.mobile})`);
+    return { success: true };
+  };
+
   const addSupplier = (supData: Omit<Supplier, 'id' | 'balanceDue'>) => {
     const newSup: Supplier = {
       ...supData,
@@ -1149,6 +1324,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return next;
     });
     logAction('Created Supplier', 'Purchases', `Added supplier ${newSup.name}`);
+  };
+
+  const updateSupplier = (supplier: Supplier) => {
+    setSuppliers(prev => {
+      const next = prev.map(s => s.id === supplier.id ? supplier : s);
+      saveSuppliersCloud(next);
+      return next;
+    });
+    logAction('Updated Supplier', 'Suppliers', `Updated supplier ${supplier.name}`);
+  };
+
+  const deleteSupplier = (id: string): { success: boolean; error?: string } => {
+    const target = suppliers.find(s => s.id === id);
+    if (!target) return { success: false, error: 'Supplier not found' };
+
+    setSuppliers(prev => {
+      const next = prev.filter(s => s.id !== id);
+      saveSuppliersCloud(next);
+      return next;
+    });
+    logAction('Deleted Supplier', 'Suppliers', `Deleted supplier ${target.name}`);
+    return { success: true };
   };
 
   // Automated Sale creation logic
@@ -1287,11 +1484,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // 6. Double-Entry Accounting Entry
     const cogs = product.purchasePrice;
+    const defaultCashAcc = accounts.find(a => a.code === '1010') || accounts.find(a => a.type === 'Cash') || accounts[0];
+    const defaultBankAcc = accounts.find(a => a.type === 'Bank') || defaultCashAcc;
+    const defaultEsewa = accounts.find(a => a.code === '1030') || defaultBankAcc;
+    const defaultKhalti = accounts.find(a => a.code === '1040') || defaultBankAcc;
+
+    let targetPayAcc = defaultCashAcc;
+    if (saleData.paymentMethod === 'Bank Transfer') {
+      targetPayAcc = defaultBankAcc;
+    } else if (saleData.paymentMethod === 'eSewa') {
+      targetPayAcc = defaultEsewa;
+    } else if (saleData.paymentMethod === 'Khalti' || saleData.paymentMethod === 'ConnectIPS') {
+      targetPayAcc = defaultKhalti;
+    }
+
     const jeLines = [
       {
-        accountId: saleData.paymentMethod === 'Cash' ? 'acc-1010' : saleData.paymentMethod === 'eSewa' ? 'acc-1030' : 'acc-1020',
-        accountCode: saleData.paymentMethod === 'Cash' ? '1010' : saleData.paymentMethod === 'eSewa' ? '1030' : '1020',
-        accountName: saleData.paymentMethod === 'Cash' ? 'Cash in Hand' : saleData.paymentMethod === 'eSewa' ? 'eSewa Merchant Wallet' : 'Nabil Bank Main Account',
+        accountId: targetPayAcc?.id || 'acc-1010',
+        accountCode: targetPayAcc?.code || '1010',
+        accountName: targetPayAcc?.name || 'Cash in Hand (Showroom Till)',
         debit: finalTotal,
         credit: 0
       }
@@ -1511,36 +1722,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!raw) return undefined;
 
     const cleanUpper = raw.toUpperCase();
+    const cleanUpperNoDash = cleanUpper.replace(/[\s\-_]/g, '');
     const cleanDigits = raw.replace(/\D/g, '');
     const hasLetters = /[A-Za-z]/.test(raw);
 
-    // 1. Strict Warranty Number (Warranty Card ID) Verification Only
-    // Must match exact warranty ID (e.g. WRN-2026-0001, WRN-...)
-    if (cleanUpper.startsWith('WRN') || warranties.some(w => w.id.toUpperCase() === cleanUpper)) {
-      const foundById = warranties.find(w => w.id.toUpperCase() === cleanUpper);
-      if (foundById) {
-        return syncWarrantyWithSalesDate(foundById);
-      }
-      return undefined;
+    // 1. Strict Warranty Number (Warranty Card ID) Verification
+    // Match exact warranty ID or normalized (e.g. WRN-2026-0001, WRN20260001, WRN 2026 0001)
+    const foundById = warranties.find(w => {
+      const wUpper = w.id.toUpperCase();
+      const wUpperNoDash = wUpper.replace(/[\s\-_]/g, '');
+      return (
+        wUpper === cleanUpper ||
+        wUpperNoDash === cleanUpperNoDash ||
+        (cleanUpper.startsWith('WRN') && wUpper.replace(/\D/g, '') === cleanDigits)
+      );
+    });
+
+    if (foundById) {
+      return syncWarrantyWithSalesDate(foundById);
     }
 
-    // If query has alphabetical letters and is NOT a warranty number (e.g., someone typing a customer name), REJECT immediately
+    // If query has alphabetical letters and was NOT an existing warranty ID, reject immediately
     if (hasLetters) {
       return undefined;
     }
 
-    // 2. Strict Registered Mobile Number Verification Only
-    // Must be pure phone/digit format with at least 7 digits (e.g. 9823680863, +9779823680863)
-    const isPhonePattern = /^[\d\s+\-()]{7,15}$/.test(raw);
-    if (isPhonePattern && cleanDigits.length >= 7) {
+    // 2. Strict Registered Mobile Number Verification
+    // Must be phone/digit format with at least 7 digits (e.g. 9823680863, 9779823680863, +977-9823680863)
+    if (cleanDigits.length >= 7) {
       const foundByMobile = warranties.find(w => {
         const wDigits = w.customerMobile.replace(/\D/g, '');
         if (!wDigits) return false;
-        // Exact mobile match or standard 10-digit mobile match (e.g., 9823680863 or 9779823680863)
         return (
           wDigits === cleanDigits ||
           (cleanDigits.length === 10 && wDigits.endsWith(cleanDigits)) ||
-          (wDigits.length === 10 && cleanDigits.endsWith(wDigits))
+          (wDigits.length === 10 && cleanDigits.endsWith(wDigits)) ||
+          (cleanDigits.length >= 10 && wDigits.includes(cleanDigits.slice(-10)))
         );
       });
 
@@ -1549,7 +1766,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    // Disallowed: Verification by customer name, serial number, or invoice number is blocked
+    // Also check if numeric query matches warranty year-seq format (e.g. "2026-0001" or "0001")
+    if (cleanDigits.length >= 4 && cleanDigits.length <= 8) {
+      const foundBySeq = warranties.find(w => {
+        const wDigits = w.id.replace(/\D/g, '');
+        return wDigits === cleanDigits || wDigits.endsWith(cleanDigits);
+      });
+      if (foundBySeq) {
+        return syncWarrantyWithSalesDate(foundBySeq);
+      }
+    }
+
     return undefined;
   };
 
@@ -1568,10 +1795,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         return (
           wDigits === cleanDigits ||
           (cleanDigits.length === 10 && wDigits.endsWith(cleanDigits)) ||
-          (wDigits.length === 10 && cleanDigits.endsWith(wDigits))
+          (wDigits.length === 10 && cleanDigits.endsWith(wDigits)) ||
+          (cleanDigits.length >= 10 && wDigits.includes(cleanDigits.slice(-10)))
         );
       })
       .map(syncWarrantyWithSalesDate);
+  };
+
+  const updateWarranty = (warrantyId: string, updatedData: Partial<Warranty>) => {
+    setWarranties(prev => {
+      const next = prev.map(w => w.id === warrantyId ? { ...w, ...updatedData } : w);
+      saveWarrantiesCloud(next);
+      return next;
+    });
+    logAction('Updated Warranty', 'Warranty Master', `Modified digital warranty #${warrantyId}`);
+  };
+
+  const deleteWarranty = (warrantyId: string) => {
+    setWarranties(prev => {
+      const next = prev.filter(w => w.id !== warrantyId);
+      saveWarrantiesCloud(next);
+      return next;
+    });
+    logAction('Deleted Warranty', 'Warranty Master', `Permanently deleted digital warranty #${warrantyId}`);
+  };
+
+  const deleteServiceHistory = (warrantyId: string, serviceId: string) => {
+    setWarranties(prev => {
+      const next = prev.map(w => {
+        if (w.id === warrantyId && w.serviceHistory) {
+          return {
+            ...w,
+            serviceHistory: w.serviceHistory.filter(s => s.id !== serviceId)
+          };
+        }
+        return w;
+      });
+      saveWarrantiesCloud(next);
+      return next;
+    });
+    logAction('Deleted Service Record', 'Warranty Master', `Removed service log entry for warranty #${warrantyId}`);
   };
 
   const updateWarrantyStatus = (warrantyId: string, status: 'Active' | 'Expired' | 'Void', remarks?: string) => {
@@ -1631,6 +1894,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     logAction('Submitted Warranty Claim', 'Warranty Claims', `Registered Claim #${claimId} for Warranty #${claimData.warrantyId}`);
     return newClaim;
+  };
+
+  const updateClaim = (claimId: string, updatedData: Partial<WarrantyClaim>) => {
+    setClaims(prev => prev.map(c => c.id === claimId ? { ...c, ...updatedData } : c));
+    logAction('Updated Claim', 'Warranty Claims', `Modified claim record #${claimId}`);
+  };
+
+  const deleteClaim = (claimId: string) => {
+    setClaims(prev => prev.filter(c => c.id !== claimId));
+    logAction('Deleted Claim', 'Warranty Claims', `Permanently deleted claim record #${claimId}`);
   };
 
   const updateClaimStatus = (claimId: string, status: ClaimStatus, details?: any) => {
@@ -1750,6 +2023,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return newRep;
   };
 
+  const deleteReplacement = (id: string) => {
+    setReplacements(prev => prev.filter(r => r.id !== id));
+    logAction('Deleted Replacement', 'Warranty Management', `Deleted replacement record #${id}`);
+  };
+
   const extendWarranty = (extData: Omit<WarrantyExtension, 'id' | 'createdAt'>): WarrantyExtension => {
     const newExt: WarrantyExtension = {
       ...extData,
@@ -1775,6 +2053,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     logAction('Extended Warranty Term', 'Warranty Management', `Extended Warranty #${extData.warrantyId} by ${extData.extensionMonths} months. New expiry: ${newExt.newExpiry}`);
     return newExt;
+  };
+
+  const deleteExtension = (id: string) => {
+    setExtensions(prev => prev.filter(e => e.id !== id));
+    logAction('Deleted Extension', 'Warranty Management', `Deleted warranty extension record #${id}`);
   };
 
   // Verification Audit Logging
@@ -1915,34 +2198,217 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Created Purchase Order', 'Purchases', `Purchased ${purchaseData.quantity} watches total cost NPR ${purchaseData.cost.toLocaleString()} via ${payAcc.name}`);
   };
 
+  const updatePurchase = (id: string, updatedData: Partial<Purchase>) => {
+    const oldPurchase = purchases.find(p => p.id === id);
+    if (!oldPurchase) return;
+
+    const mergedPurchase: Purchase = {
+      ...oldPurchase,
+      ...updatedData
+    };
+
+    // 1. If items or quantities changed, adjust watch inventory stocks accordingly
+    if (updatedData.items) {
+      setProducts(prevProducts => {
+        let nextProducts = [...prevProducts];
+
+        // First revert old quantities from old items
+        if (oldPurchase.items && oldPurchase.items.length > 0) {
+          oldPurchase.items.forEach(oldItem => {
+            nextProducts = nextProducts.map(p => {
+              if (
+                p.id === oldItem.productId ||
+                `${p.brand} ${p.model}`.toLowerCase() === oldItem.productName.toLowerCase() ||
+                oldItem.productName.toLowerCase().includes(p.model.toLowerCase())
+              ) {
+                const newStock = Math.max(0, p.stock - oldItem.quantity);
+                let newStatus: Product['status'] = 'In Stock';
+                if (newStock === 0) newStatus = 'Out of Stock';
+                else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
+                return { ...p, stock: newStock, status: newStatus };
+              }
+              return p;
+            });
+          });
+        }
+
+        // Then apply new quantities for updated items
+        updatedData.items!.forEach(newItem => {
+          nextProducts = nextProducts.map(p => {
+            if (
+              p.id === newItem.productId ||
+              `${p.brand} ${p.model}`.toLowerCase() === newItem.productName.toLowerCase() ||
+              newItem.productName.toLowerCase().includes(p.model.toLowerCase())
+            ) {
+              const newStock = p.stock + newItem.quantity;
+              let newStatus: Product['status'] = 'In Stock';
+              if (newStock === 0) newStatus = 'Out of Stock';
+              else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
+              return { ...p, stock: newStock, status: newStatus };
+            }
+            return p;
+          });
+        });
+
+        saveProductsCloud(nextProducts);
+        return nextProducts;
+      });
+    }
+
+    // 2. If cost or payment account changed, adjust linked accounting balances & journal entries
+    if (updatedData.cost !== undefined && updatedData.cost !== oldPurchase.cost) {
+      const costDiff = updatedData.cost - oldPurchase.cost;
+      const payAccCode = mergedPurchase.paymentAccountCode || '1010';
+
+      // Update Journal Entry lines for this purchase
+      setJournalEntries(prev => {
+        const next = prev.map(je => {
+          if (je.reference === oldPurchase.invoiceNumber || je.id.includes(id)) {
+            return {
+              ...je,
+              reference: mergedPurchase.invoiceNumber,
+              date: mergedPurchase.purchaseDate,
+              lines: je.lines.map(line => {
+                if (line.accountCode === '1200') return { ...line, debit: mergedPurchase.cost };
+                return { ...line, credit: mergedPurchase.cost };
+              })
+            };
+          }
+          return je;
+        });
+        saveJournalEntriesCloud(next);
+        return next;
+      });
+
+      // Update Chart of Account balances
+      setAccounts(prev => {
+        const next = prev.map(acc => {
+          if (acc.code === '1200') return { ...acc, balance: Math.max(0, acc.balance + costDiff) };
+          if (acc.code === payAccCode) {
+            if (payAccCode.startsWith('1')) return { ...acc, balance: acc.balance - costDiff };
+            return { ...acc, balance: Math.max(0, acc.balance + costDiff) };
+          }
+          return acc;
+        });
+        saveAccountsCloud(next);
+        return next;
+      });
+
+      // Update supplier balance due if on credit
+      if (mergedPurchase.supplierId && (payAccCode === '2010' || !mergedPurchase.paymentAccountCode)) {
+        setSuppliers(prev => {
+          const next = prev.map(s => s.id === mergedPurchase.supplierId ? { ...s, balanceDue: Math.max(0, s.balanceDue + costDiff) } : s);
+          saveSuppliersCloud(next);
+          return next;
+        });
+      }
+    }
+
+    // 3. Save updated purchase record
+    setPurchases(prev => {
+      const next = prev.map(p => p.id === id ? mergedPurchase : p);
+      savePurchasesCloud(next);
+      return next;
+    });
+
+    logAction('Updated Purchase Order', 'Purchases', `Modified purchase order #${mergedPurchase.invoiceNumber} (${id})`);
+  };
+
   const deletePurchase = (id: string) => {
     const target = purchases.find(p => p.id === id);
     if (!target) return;
 
+    // 1. Deduct the watch inventory stock that was added by this purchase
+    if (target.items && target.items.length > 0) {
+      setProducts(prevProducts => {
+        const nextProducts = prevProducts.map(p => {
+          const matchingItem = target.items.find(
+            it => it.productId === p.id ||
+            `${p.brand} ${p.model}`.toLowerCase() === it.productName.toLowerCase() ||
+            it.productName.toLowerCase().includes(p.model.toLowerCase())
+          );
+          if (matchingItem) {
+            const newStock = Math.max(0, p.stock - matchingItem.quantity);
+            let newStatus: Product['status'] = 'In Stock';
+            if (newStock === 0) newStatus = 'Out of Stock';
+            else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
+            return {
+              ...p,
+              stock: newStock,
+              status: newStatus
+            };
+          }
+          return p;
+        });
+        saveProductsCloud(nextProducts);
+        return nextProducts;
+      });
+    } else if (target.quantity > 0) {
+      // Fallback for legacy purchase records without items breakdown
+      setProducts(prevProducts => {
+        const match = prevProducts.find(p =>
+          (target.supplierName && p.brand.toLowerCase().includes(target.supplierName.toLowerCase())) ||
+          p.purchasePrice === Math.round(target.cost / target.quantity)
+        );
+        if (!match) return prevProducts;
+
+        const nextProducts = prevProducts.map(p => {
+          if (p.id === match.id) {
+            const newStock = Math.max(0, p.stock - target.quantity);
+            let newStatus: Product['status'] = 'In Stock';
+            if (newStock === 0) newStatus = 'Out of Stock';
+            else if (newStock <= p.reorderLevel) newStatus = 'Low Stock';
+            return {
+              ...p,
+              stock: newStock,
+              status: newStatus
+            };
+          }
+          return p;
+        });
+        saveProductsCloud(nextProducts);
+        return nextProducts;
+      });
+    }
+
+    // 2. Remove purchase order record
     setPurchases(prev => {
       const next = prev.filter(p => p.id !== id);
       savePurchasesCloud(next);
       return next;
     });
+
+    // 3. Remove linked journal entries
     setJournalEntries(prev => {
       const next = prev.filter(je => je.reference !== target.invoiceNumber && !je.id.includes(id));
       saveJournalEntriesCloud(next);
       return next;
     });
 
-    // Revert account balances
+    // 4. Revert Chart of Accounts balances
+    const payAccCode = target.paymentAccountCode || '1010';
     setAccounts(prev => {
       const next = prev.map(acc => {
+        // Reverse inventory asset (was debited, now reduced)
         if (acc.code === '1200') return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
-        if (acc.code === '2010') return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
+        // Reverse payment account
+        if (acc.code === payAccCode) {
+          if (payAccCode.startsWith('1')) {
+            // Cash/Bank: was credited (deducted), so refund/restore
+            return { ...acc, balance: acc.balance + target.cost };
+          } else {
+            // Accounts Payable: was credited (increased), so deduct
+            return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
+          }
+        }
         return acc;
       });
       saveAccountsCloud(next);
       return next;
     });
 
-    // Update supplier balance due
-    if (target.supplierId) {
+    // 5. Update supplier balance due if it was on credit
+    if (target.supplierId && (payAccCode === '2010' || !target.paymentAccountCode)) {
       setSuppliers(prev => {
         const next = prev.map(s => s.id === target.supplierId ? { ...s, balanceDue: Math.max(0, s.balanceDue - target.cost) } : s);
         saveSuppliersCloud(next);
@@ -1950,7 +2416,404 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
     }
 
-    logAction('Deleted Purchase Order', 'Purchases', `Deleted purchase order #${target.invoiceNumber} (${target.id}) of NPR ${target.cost.toLocaleString()}`);
+    logAction('Deleted Purchase Order', 'Purchases', `Deleted purchase order #${target.invoiceNumber} (${target.id}) of NPR ${target.cost.toLocaleString()} and deducted ${target.quantity} units from watch inventory stock`);
+  };
+
+  // ==========================================
+  // NON-WATCH SUPPLIES & PACKAGING PROCUREMENT
+  // ==========================================
+
+  const createSupplyItem = (itemData: Omit<SupplyItem, 'id' | 'createdAt' | 'status'>): SupplyItem => {
+    let status: SupplyItem['status'] = 'In Stock';
+    if (itemData.currentStock === 0) status = 'Out of Stock';
+    else if (itemData.currentStock <= itemData.reorderLevel) status = 'Low Stock';
+
+    const newItem: SupplyItem = {
+      ...itemData,
+      id: `sup-item-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      status,
+      createdAt: new Date().toISOString().substring(0, 10)
+    };
+
+    setSupplyItems(prev => {
+      const next = [newItem, ...prev];
+      saveSupplyItemsCloud(next);
+      return next;
+    });
+
+    logAction('Created Supply Catalog Item', 'Supplies', `Added operational item ${newItem.name} (${newItem.category}) with ${newItem.currentStock} ${newItem.unit}`);
+    return newItem;
+  };
+
+  const updateSupplyItem = (id: string, updatedData: Partial<SupplyItem>) => {
+    setSupplyItems(prev => {
+      const next = prev.map(item => {
+        if (item.id === id) {
+          const merged = { ...item, ...updatedData, updatedAt: new Date().toISOString() };
+          if (merged.currentStock === 0) merged.status = 'Out of Stock';
+          else if (merged.currentStock <= merged.reorderLevel) merged.status = 'Low Stock';
+          else merged.status = 'In Stock';
+          return merged;
+        }
+        return item;
+      });
+      saveSupplyItemsCloud(next);
+      return next;
+    });
+    logAction('Updated Supply Item', 'Supplies', `Updated operational item details for #${id}`);
+  };
+
+  const deleteSupplyItem = (id: string): { success: boolean; error?: string } => {
+    const item = supplyItems.find(i => i.id === id);
+    if (!item) return { success: false, error: 'Supply item not found' };
+
+    // Check if this item is used in existing supply purchases
+    const hasPurchases = supplyPurchases.some(p => p.items?.some(it => it.supplyItemId === id));
+    if (hasPurchases) {
+      return {
+        success: false,
+        error: `Cannot delete "${item.name}" because it is linked to historical supply purchase orders. You can adjust its stock or mark it inactive instead.`
+      };
+    }
+
+    setSupplyItems(prev => {
+      const next = prev.filter(i => i.id !== id);
+      saveSupplyItemsCloud(next);
+      return next;
+    });
+
+    logAction('Deleted Supply Catalog Item', 'Supplies', `Removed supply item: ${item.name} (${item.sku})`);
+    return { success: true };
+  };
+
+  const createSupplyPurchase = (purchaseData: {
+    purchaseType: SupplyPurchase['purchaseType'];
+    supplierId: string;
+    invoiceNumber: string;
+    purchaseDate: string;
+    cost: number;
+    quantity: number;
+    paymentMethod?: string;
+    paymentAccountCode?: string;
+    accountType?: '1210' | '5020';
+    notes?: string;
+    items: SupplyPurchaseItem[];
+  }) => {
+    const sup = suppliers.find(s => s.id === purchaseData.supplierId);
+    const supplierName = sup ? sup.name : 'Packaging & Store Supplier';
+    const payAccCode = purchaseData.paymentAccountCode || '1010';
+    const debitAccountCode = purchaseData.accountType === '5020' ? '5020' : '1210';
+    const debitAccountName = debitAccountCode === '1210' ? 'Packaging & Supplies Inventory' : 'Store & Operational Supplies Expense';
+
+    const newSupplyPurchase: SupplyPurchase = {
+      id: `spo-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      purchaseType: purchaseData.purchaseType,
+      supplierId: purchaseData.supplierId,
+      supplierName,
+      invoiceNumber: purchaseData.invoiceNumber,
+      purchaseDate: purchaseData.purchaseDate,
+      cost: purchaseData.cost,
+      quantity: purchaseData.quantity,
+      paymentMethod: purchaseData.paymentMethod || 'Cash in Hand',
+      paymentAccountCode: payAccCode,
+      accountType: debitAccountCode as '1210' | '5020',
+      notes: purchaseData.notes || '',
+      createdBy: currentUser.name || 'Admin',
+      items: purchaseData.items
+    };
+
+    // 1. Update Supply items current stock
+    setSupplyItems(prevItems => {
+      let nextItems = [...prevItems];
+      purchaseData.items.forEach(purchased => {
+        const itemIdx = nextItems.findIndex(i => i.id === purchased.supplyItemId);
+        if (itemIdx >= 0) {
+          const item = nextItems[itemIdx];
+          const newStock = item.currentStock + purchased.quantity;
+          let newStatus: SupplyItem['status'] = 'In Stock';
+          if (newStock === 0) newStatus = 'Out of Stock';
+          else if (newStock <= item.reorderLevel) newStatus = 'Low Stock';
+
+          nextItems[itemIdx] = {
+            ...item,
+            currentStock: newStock,
+            estimatedUnitCost: purchased.unitCost,
+            status: newStatus,
+            updatedAt: new Date().toISOString()
+          };
+        }
+      });
+      saveSupplyItemsCloud(nextItems);
+      return nextItems;
+    });
+
+    // 2. Add to Supply Purchases List
+    setSupplyPurchases(prev => {
+      const next = [newSupplyPurchase, ...prev];
+      saveSupplyPurchasesCloud(next);
+      return next;
+    });
+
+    // 3. Automated Double-Entry Accounting Voucher
+    const payAcc = accounts.find(a => a.code === payAccCode);
+    const payAccName = payAcc ? payAcc.name : (payAccCode === '2010' ? 'Accounts Payable' : 'Cash in Hand');
+
+    const newJE: JournalEntry = {
+      id: `je-spo-${Date.now()}`,
+      entryNumber: `JE-SPO-${Date.now().toString().slice(-4)}`,
+      date: purchaseData.purchaseDate,
+      reference: purchaseData.invoiceNumber,
+      description: `Purchase of ${purchaseData.purchaseType} (${purchaseData.items.map(i => i.supplyItemName).join(', ')}) from ${supplierName}`,
+      sourceModule: 'Purchases',
+      createdBy: 'System (Supplies Procured)',
+      lines: [
+        {
+          accountId: debitAccountCode === '1210' ? 'acc-1210' : 'acc-5020',
+          accountCode: debitAccountCode,
+          accountName: debitAccountName,
+          debit: purchaseData.cost,
+          credit: 0
+        },
+        {
+          accountId: payAcc?.id || `acc-${payAccCode}`,
+          accountCode: payAccCode,
+          accountName: payAccName,
+          debit: 0,
+          credit: purchaseData.cost
+        }
+      ],
+      isPosted: true
+    };
+
+    setJournalEntries(prev => {
+      const next = [newJE, ...prev];
+      saveJournalEntriesCloud(next);
+      return next;
+    });
+
+    // 4. Update Chart of Account balances
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        if (acc.code === debitAccountCode) return { ...acc, balance: acc.balance + purchaseData.cost };
+        if (acc.code === payAccCode) {
+          if (payAccCode.startsWith('1')) return { ...acc, balance: acc.balance - purchaseData.cost };
+          return { ...acc, balance: acc.balance + purchaseData.cost };
+        }
+        return acc;
+      });
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    // 5. Update Supplier balance due if bought on credit
+    if (purchaseData.supplierId && (payAccCode === '2010' || !purchaseData.paymentAccountCode)) {
+      setSuppliers(prev => {
+        const next = prev.map(s => s.id === purchaseData.supplierId ? { ...s, balanceDue: s.balanceDue + purchaseData.cost } : s);
+        saveSuppliersCloud(next);
+        return next;
+      });
+    }
+
+    logAction('Recorded Supply Purchase', 'Supplies', `Purchased ${purchaseData.quantity} supplies for NPR ${purchaseData.cost.toLocaleString()} under Invoice #${purchaseData.invoiceNumber}`);
+  };
+
+  const updateSupplyPurchase = (id: string, updatedData: Partial<SupplyPurchase>) => {
+    const oldPurchase = supplyPurchases.find(p => p.id === id);
+    if (!oldPurchase) return;
+
+    const mergedPurchase: SupplyPurchase = {
+      ...oldPurchase,
+      ...updatedData
+    };
+
+    // If items or quantities changed, adjust supply items stock
+    if (updatedData.items) {
+      setSupplyItems(prevItems => {
+        let nextItems = [...prevItems];
+
+        // Revert old quantities
+        if (oldPurchase.items && oldPurchase.items.length > 0) {
+          oldPurchase.items.forEach(oldItem => {
+            nextItems = nextItems.map(item => {
+              if (item.id === oldItem.supplyItemId) {
+                const newStock = Math.max(0, item.currentStock - oldItem.quantity);
+                let newStatus: SupplyItem['status'] = 'In Stock';
+                if (newStock === 0) newStatus = 'Out of Stock';
+                else if (newStock <= item.reorderLevel) newStatus = 'Low Stock';
+                return { ...item, currentStock: newStock, status: newStatus };
+              }
+              return item;
+            });
+          });
+        }
+
+        // Apply new quantities
+        updatedData.items!.forEach(newItem => {
+          nextItems = nextItems.map(item => {
+            if (item.id === newItem.supplyItemId) {
+              const newStock = item.currentStock + newItem.quantity;
+              let newStatus: SupplyItem['status'] = 'In Stock';
+              if (newStock === 0) newStatus = 'Out of Stock';
+              else if (newStock <= item.reorderLevel) newStatus = 'Low Stock';
+              return { ...item, currentStock: newStock, status: newStatus, estimatedUnitCost: newItem.unitCost };
+            }
+            return item;
+          });
+        });
+
+        saveSupplyItemsCloud(nextItems);
+        return nextItems;
+      });
+    }
+
+    // If cost or payment account changed, update ledger
+    if (updatedData.cost !== undefined && updatedData.cost !== oldPurchase.cost) {
+      const costDiff = updatedData.cost - oldPurchase.cost;
+      const payAccCode = mergedPurchase.paymentAccountCode || '1010';
+      const debitAccCode = mergedPurchase.accountType || '1210';
+
+      setJournalEntries(prev => {
+        const next = prev.map(je => {
+          if (je.reference === oldPurchase.invoiceNumber || je.id.includes(id)) {
+            return {
+              ...je,
+              reference: mergedPurchase.invoiceNumber,
+              date: mergedPurchase.purchaseDate,
+              lines: je.lines.map(line => {
+                if (line.accountCode === debitAccCode) return { ...line, debit: mergedPurchase.cost };
+                return { ...line, credit: mergedPurchase.cost };
+              })
+            };
+          }
+          return je;
+        });
+        saveJournalEntriesCloud(next);
+        return next;
+      });
+
+      setAccounts(prev => {
+        const next = prev.map(acc => {
+          if (acc.code === debitAccCode) return { ...acc, balance: Math.max(0, acc.balance + costDiff) };
+          if (acc.code === payAccCode) {
+            if (payAccCode.startsWith('1')) return { ...acc, balance: acc.balance - costDiff };
+            return { ...acc, balance: Math.max(0, acc.balance + costDiff) };
+          }
+          return acc;
+        });
+        saveAccountsCloud(next);
+        return next;
+      });
+
+      if (mergedPurchase.supplierId && (payAccCode === '2010' || !mergedPurchase.paymentAccountCode)) {
+        setSuppliers(prev => {
+          const next = prev.map(s => s.id === mergedPurchase.supplierId ? { ...s, balanceDue: Math.max(0, s.balanceDue + costDiff) } : s);
+          saveSuppliersCloud(next);
+          return next;
+        });
+      }
+    }
+
+    setSupplyPurchases(prev => {
+      const next = prev.map(p => p.id === id ? mergedPurchase : p);
+      saveSupplyPurchasesCloud(next);
+      return next;
+    });
+
+    logAction('Updated Supply Purchase', 'Supplies', `Updated supply purchase order #${mergedPurchase.invoiceNumber}`);
+  };
+
+  const deleteSupplyPurchase = (id: string) => {
+    const target = supplyPurchases.find(p => p.id === id);
+    if (!target) return;
+
+    // 1. Deduct supply stock
+    if (target.items && target.items.length > 0) {
+      setSupplyItems(prevItems => {
+        const nextItems = prevItems.map(item => {
+          const matchingItem = target.items.find(it => it.supplyItemId === item.id);
+          if (matchingItem) {
+            const newStock = Math.max(0, item.currentStock - matchingItem.quantity);
+            let newStatus: SupplyItem['status'] = 'In Stock';
+            if (newStock === 0) newStatus = 'Out of Stock';
+            else if (newStock <= item.reorderLevel) newStatus = 'Low Stock';
+            return { ...item, currentStock: newStock, status: newStatus };
+          }
+          return item;
+        });
+        saveSupplyItemsCloud(nextItems);
+        return nextItems;
+      });
+    }
+
+    // 2. Remove purchase order
+    setSupplyPurchases(prev => {
+      const next = prev.filter(p => p.id !== id);
+      saveSupplyPurchasesCloud(next);
+      return next;
+    });
+
+    // 3. Remove linked journal entries
+    setJournalEntries(prev => {
+      const next = prev.filter(je => je.reference !== target.invoiceNumber && !je.id.includes(id));
+      saveJournalEntriesCloud(next);
+      return next;
+    });
+
+    // 4. Revert Chart of Accounts
+    const payAccCode = target.paymentAccountCode || '1010';
+    const debitAccCode = target.accountType || '1210';
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        if (acc.code === debitAccCode) return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
+        if (acc.code === payAccCode) {
+          if (payAccCode.startsWith('1')) return { ...acc, balance: acc.balance + target.cost };
+          return { ...acc, balance: Math.max(0, acc.balance - target.cost) };
+        }
+        return acc;
+      });
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    // 5. Update supplier balance due
+    if (target.supplierId && (payAccCode === '2010' || !target.paymentAccountCode)) {
+      setSuppliers(prev => {
+        const next = prev.map(s => s.id === target.supplierId ? { ...s, balanceDue: Math.max(0, s.balanceDue - target.cost) } : s);
+        saveSuppliersCloud(next);
+        return next;
+      });
+    }
+
+    logAction('Deleted Supply Purchase', 'Supplies', `Deleted supply order #${target.invoiceNumber} (${target.id}) of NPR ${target.cost.toLocaleString()} and deducted stock`);
+  };
+
+  const logSupplyUsage = (usage: Omit<SupplyUsageLog, 'id' | 'date' | 'loggedBy'>) => {
+    const newLog: SupplyUsageLog = {
+      ...usage,
+      id: `log-use-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      date: new Date().toISOString().substring(0, 10),
+      loggedBy: currentUser.name || 'Admin'
+    };
+
+    setSupplyUsageLogs(prev => [newLog, ...prev]);
+
+    // Deduct stock from supply items
+    setSupplyItems(prevItems => {
+      const nextItems = prevItems.map(item => {
+        if (item.id === usage.supplyItemId) {
+          const newStock = Math.max(0, item.currentStock - usage.quantityUsed);
+          let newStatus: SupplyItem['status'] = 'In Stock';
+          if (newStock === 0) newStatus = 'Out of Stock';
+          else if (newStock <= item.reorderLevel) newStatus = 'Low Stock';
+          return { ...item, currentStock: newStock, status: newStatus, updatedAt: new Date().toISOString() };
+        }
+        return item;
+      });
+      saveSupplyItemsCloud(nextItems);
+      return nextItems;
+    });
+
+    logAction('Logged Supply Usage', 'Supplies', `Used ${usage.quantityUsed} ${usage.unit} of ${usage.supplyItemName} for ${usage.usedFor}`);
   };
 
   // Manual Journal Entry
@@ -2053,6 +2916,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Added Fiscal Year', 'Accounting Master', `Added Fiscal Period: ${newFY.name}`);
   };
 
+  const updateFiscalYear = (fy: FiscalYear) => {
+    setFiscalYears(prev => {
+      const updated = prev.map(f => f.id === fy.id ? fy : f);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fiscal_years`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Updated Fiscal Year', 'Accounting Master', `Updated fiscal year ${fy.name}`);
+  };
+
+  const deleteFiscalYear = (id: string) => {
+    setFiscalYears(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fiscal_years`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Deleted Fiscal Year', 'Accounting Master', `Deleted fiscal period #${id}`);
+  };
+
   const closeFiscalYear = (id: string): { success?: boolean; entryNumber?: string; error?: string } => {
     const fy = fiscalYears.find(f => f.id === id);
     if (!fy) return { error: 'Fiscal year not found' };
@@ -2087,6 +2968,24 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     logAction('Added Cost Center', 'Accounting Master', `Created Cost Center: ${newCC.name} (${newCC.code})`);
   };
 
+  const updateCostCenter = (cc: CostCenter) => {
+    setCostCenters(prev => {
+      const updated = prev.map(c => c.id === cc.id ? cc : c);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cost_centers`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Updated Cost Center', 'Accounting Master', `Updated Cost Center: ${cc.name}`);
+  };
+
+  const deleteCostCenter = (id: string) => {
+    setCostCenters(prev => {
+      const updated = prev.filter(c => c.id !== id);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_cost_centers`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Deleted Cost Center', 'Accounting Master', `Deleted cost center #${id}`);
+  };
+
   const addFixedAsset = (assetData: Omit<FixedAsset, 'id'>) => {
     const newAsset: FixedAsset = {
       ...assetData,
@@ -2100,6 +2999,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     // Auto-post asset purchase voucher if cost > 0
     if (newAsset.cost > 0) {
+      const bankOrCashAcc = accounts.find(a => a.type === 'Bank') || accounts.find(a => a.type === 'Cash') || accounts.find(a => a.code === '1010') || accounts[0];
       postVoucher({
         entryNumber: `AST-${newAsset.code}`,
         date: newAsset.purchaseDate,
@@ -2112,25 +3012,43 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         lines: [
           {
             accountId: newAsset.accountId || 'acc-1510',
-            accountCode: newAsset.accountId.replace('acc-', '') || '1510',
+            accountCode: newAsset.accountId?.replace('acc-', '') || '1510',
             accountName: accounts.find(a => a.id === newAsset.accountId)?.name || 'Fixed Asset Account',
             debit: newAsset.cost,
             credit: 0,
             particulars: `Purchase of ${newAsset.name}`
           },
           {
-            accountId: 'acc-1020',
-            accountCode: '1020',
-            accountName: 'Nabil Bank Corporate Account',
+            accountId: bankOrCashAcc?.id || 'acc-1010',
+            accountCode: bankOrCashAcc?.code || '1010',
+            accountName: bankOrCashAcc?.name || 'Cash in Hand',
             debit: 0,
             credit: newAsset.cost,
-            particulars: `Bank disbursement for ${newAsset.name}`
+            particulars: `Payment disbursement for ${newAsset.name}`
           }
         ]
       });
     }
 
     logAction('Added Fixed Asset', 'Fixed Assets', `Registered asset ${newAsset.name} at NPR ${newAsset.cost.toLocaleString()}`);
+  };
+
+  const updateFixedAsset = (asset: FixedAsset) => {
+    setFixedAssets(prev => {
+      const updated = prev.map(a => a.id === asset.id ? asset : a);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fixed_assets`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Updated Fixed Asset', 'Fixed Assets', `Updated asset record ${asset.name} (${asset.code})`);
+  };
+
+  const deleteFixedAsset = (id: string) => {
+    setFixedAssets(prev => {
+      const updated = prev.filter(a => a.id !== id);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_fixed_assets`, JSON.stringify(updated));
+      return updated;
+    });
+    logAction('Deleted Fixed Asset', 'Fixed Assets', `Deleted asset #${id}`);
   };
 
   const runAssetDepreciation = (assetId: string): JournalEntry | { error: string } => {
@@ -2286,6 +3204,138 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   /**
+   * Direct Modification of Journal Entry Voucher with Auto Balancing Validation & Ledger Recalculation
+   */
+  const updateJournalEntry = (
+    entryId: string,
+    updatedData: Partial<JournalEntry>
+  ): JournalEntry | { error: string } => {
+    const target = journalEntries.find(j => j.id === entryId || j.entryNumber === entryId);
+    if (!target) return { error: 'Journal entry voucher not found' };
+
+    const nextLines = updatedData.lines || target.lines;
+    const totalDebit = nextLines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+    const totalCredit = nextLines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+    const diff = Math.abs(Math.round((totalDebit - totalCredit) * 100) / 100);
+    if (diff > 0.05) {
+      return {
+        error: `Validation Error: Total Debit (NPR ${totalDebit.toLocaleString()}) does not match Total Credit (NPR ${totalCredit.toLocaleString()}). Difference: NPR ${diff.toLocaleString()}`
+      };
+    }
+
+    const modifiedJE: JournalEntry = {
+      ...target,
+      ...updatedData,
+      id: target.id,
+      entryNumber: updatedData.entryNumber || target.entryNumber,
+      lines: nextLines,
+      updatedAt: new Date().toISOString()
+    };
+
+    setAccounts(prev => {
+      let currentAccounts = [...prev];
+
+      nextLines.forEach(line => {
+        if (line.accountCode && !currentAccounts.some(a => a.code === line.accountCode)) {
+          const codePrefix = line.accountCode.substring(0, 1);
+          let category: Account['category'] = 'Assets';
+          let type = 'Current Asset';
+          if (codePrefix === '2') { category = 'Liabilities'; type = 'Current Liability'; }
+          else if (codePrefix === '3') { category = 'Equity'; type = 'Equity'; }
+          else if (codePrefix === '4') { category = 'Revenue'; type = 'Operating Revenue'; }
+          else if (codePrefix === '5') { category = 'Expenses'; type = 'Operating Expense'; }
+
+          currentAccounts.push({
+            id: line.accountId || `acc-${line.accountCode}`,
+            code: line.accountCode,
+            name: line.accountName || `Account ${line.accountCode}`,
+            category,
+            type,
+            balance: 0
+          });
+        }
+      });
+
+      const next = currentAccounts.map(acc => {
+        const oldLines = target.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
+        const newLines = nextLines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
+
+        if (oldLines.length === 0 && newLines.length === 0) return acc;
+
+        let undoDelta = 0;
+        oldLines.forEach(l => {
+          if (acc.category === 'Assets' || acc.category === 'Expenses') {
+            undoDelta += ((Number(l.debit) || 0) - (Number(l.credit) || 0));
+          } else {
+            undoDelta += ((Number(l.credit) || 0) - (Number(l.debit) || 0));
+          }
+        });
+
+        let applyDelta = 0;
+        newLines.forEach(l => {
+          if (acc.category === 'Assets' || acc.category === 'Expenses') {
+            applyDelta += ((Number(l.debit) || 0) - (Number(l.credit) || 0));
+          } else {
+            applyDelta += ((Number(l.credit) || 0) - (Number(l.debit) || 0));
+          }
+        });
+
+        return { ...acc, balance: acc.balance - undoDelta + applyDelta };
+      });
+
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    setJournalEntries(prev => {
+      const next = prev.map(j => j.id === target.id ? modifiedJE : j);
+      saveJournalEntriesCloud(next);
+      return next;
+    });
+
+    logAction('Modified Journal Entry', 'General Ledger', `Modified Voucher #${modifiedJE.entryNumber}: Total NPR ${totalDebit.toLocaleString()}`);
+    return modifiedJE;
+  };
+
+  /**
+   * Delete Journal Entry Voucher & Revert Ledger Impact
+   */
+  const deleteJournalEntry = (entryId: string): { success: boolean; error?: string } => {
+    const target = journalEntries.find(j => j.id === entryId || j.entryNumber === entryId);
+    if (!target) return { success: false, error: 'Journal entry not found' };
+
+    setAccounts(prev => {
+      const next = prev.map(acc => {
+        const matchingLines = target.lines.filter(l => l.accountCode === acc.code || l.accountId === acc.id);
+        if (matchingLines.length === 0) return acc;
+
+        let deltaToRevert = 0;
+        matchingLines.forEach(l => {
+          if (acc.category === 'Assets' || acc.category === 'Expenses') {
+            deltaToRevert += ((Number(l.debit) || 0) - (Number(l.credit) || 0));
+          } else {
+            deltaToRevert += ((Number(l.credit) || 0) - (Number(l.debit) || 0));
+          }
+        });
+
+        return { ...acc, balance: acc.balance - deltaToRevert };
+      });
+
+      saveAccountsCloud(next);
+      return next;
+    });
+
+    setJournalEntries(prev => {
+      const next = prev.filter(j => j.id !== target.id);
+      saveJournalEntriesCloud(next);
+      return next;
+    });
+
+    logAction('Deleted Journal Entry', 'General Ledger', `Permanently deleted Voucher #${target.entryNumber}`);
+    return { success: true };
+  };
+
+  /**
    * Reversal Entry Generator for Audit Corrections
    */
   const reverseJournalEntry = (entryId: string, reason: string): JournalEntry | { error: string } => {
@@ -2433,25 +3483,52 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const target = accounts.find(a => a.id === id || a.code === id);
     if (!target) return { success: false, error: 'Account not found' };
 
-    // Check if journal entries exist for this account
-    const referencingEntries = journalEntries.filter(je =>
-      je.lines?.some(l => l.accountId === target.id || l.accountCode === target.code)
-    );
+    // 1. Remove the account head from accounts list
+    const updatedAccounts = accounts.filter(a => a.id !== target.id && a.code !== target.code);
 
-    if (referencingEntries.length > 0 && !force) {
-      return {
-        success: false,
-        error: `Cannot delete account [${target.code}] "${target.name}" because it is referenced in ${referencingEntries.length} journal entry voucher(s). You can edit/rename it or delete linked vouchers first.`
-      };
-    }
+    // 2. Remove all journal entries and lines referencing this deleted account
+    const updatedJournalEntries = journalEntries
+      .map(je => ({
+        ...je,
+        lines: (je.lines || []).filter(l => l.accountId !== target.id && l.accountCode !== target.code)
+      }))
+      .filter(je => {
+        if (!je.lines || je.lines.length < 2) return false;
+        const totalDebit = je.lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
+        const totalCredit = je.lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+        return Math.abs(totalDebit - totalCredit) < 0.01;
+      });
 
-    setAccounts(prev => {
-      const updated = prev.filter(a => a.id !== target.id && a.code !== target.code);
-      saveAccountsCloud(updated);
-      return updated;
+    // 3. Recalculate balances for all remaining accounts based on clean journal entries
+    const accountBalancesMap: Record<string, number> = {};
+    updatedJournalEntries.forEach(je => {
+      if (je.isReversed) return;
+      je.lines.forEach(line => {
+        if (!accountBalancesMap[line.accountCode]) {
+          accountBalancesMap[line.accountCode] = 0;
+        }
+        const accDef = updatedAccounts.find(a => a.code === line.accountCode);
+        const category = accDef?.category || (line.accountCode.startsWith('1') || line.accountCode.startsWith('5') ? 'Assets' : 'Revenue');
+
+        if (category === 'Assets' || category === 'Expenses') {
+          accountBalancesMap[line.accountCode] += (Number(line.debit) || 0) - (Number(line.credit) || 0);
+        } else {
+          accountBalancesMap[line.accountCode] += (Number(line.credit) || 0) - (Number(line.debit) || 0);
+        }
+      });
     });
 
-    logAction('Deleted Account Head', 'Accounting Master', `Removed account head [${target.code}] ${target.name} (${target.category})`);
+    const finalAccounts = updatedAccounts.map(acc => ({
+      ...acc,
+      balance: ((acc as any).openingBalance || 0) + (accountBalancesMap[acc.code] || 0)
+    }));
+
+    setAccounts(finalAccounts);
+    setJournalEntries(updatedJournalEntries);
+    saveAccountsCloud(finalAccounts);
+    saveJournalEntriesCloud(updatedJournalEntries);
+
+    logAction('Deleted Account Head & Purged Data', 'Accounting Master', `Permanently removed account head [${target.code}] "${target.name}" and purged all associated journal entry values from database.`);
     return { success: true };
   };
 
@@ -2462,6 +3539,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const updatedJournalEntries = [...journalEntries];
 
+    const defaultCashAcc = accounts.find(a => a.code === '1010') || accounts.find(a => a.type === 'Cash') || accounts[0];
+    const defaultBankAcc = accounts.find(a => a.type === 'Bank') || defaultCashAcc;
+    const defaultEsewa = accounts.find(a => a.code === '1030') || defaultBankAcc;
+    const defaultKhalti = accounts.find(a => a.code === '1040') || defaultBankAcc;
+
     // 1. Ensure journal entries exist for all sales
     sales.forEach((sale, index) => {
       const hasJE = updatedJournalEntries.some(je => je.reference === sale.invoiceNumber);
@@ -2469,11 +3551,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const invSeq = String(index + 1).padStart(4, '0');
         const cogs = products.find(p => p.id === sale.productId)?.purchasePrice || sale.sellingPrice * 0.7;
 
+        let targetPayAcc = defaultCashAcc;
+        if (sale.paymentMethod === 'Bank Transfer') {
+          targetPayAcc = defaultBankAcc;
+        } else if (sale.paymentMethod === 'eSewa') {
+          targetPayAcc = defaultEsewa;
+        } else if (sale.paymentMethod === 'Khalti' || sale.paymentMethod === 'ConnectIPS') {
+          targetPayAcc = defaultKhalti;
+        }
+
         const jeLines = [
           {
-            accountId: sale.paymentMethod === 'Cash' ? 'acc-1010' : sale.paymentMethod === 'eSewa' ? 'acc-1030' : 'acc-1020',
-            accountCode: sale.paymentMethod === 'Cash' ? '1010' : sale.paymentMethod === 'eSewa' ? '1030' : '1020',
-            accountName: sale.paymentMethod === 'Cash' ? 'Cash in Hand' : sale.paymentMethod === 'eSewa' ? 'eSewa Merchant Wallet' : 'Nabil Bank Main Account',
+            accountId: targetPayAcc?.id || 'acc-1010',
+            accountCode: targetPayAcc?.code || '1010',
+            accountName: targetPayAcc?.name || 'Cash in Hand (Showroom Till)',
             debit: sale.finalTotal,
             credit: 0
           }
@@ -2530,8 +3621,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const hasJE = updatedJournalEntries.some(je => je.reference === pur.invoiceNumber);
       if (!hasJE) {
         const payAccCode = pur.paymentAccountCode || (pur.paymentMethod?.toLowerCase().includes('credit') ? '2010' : '1010');
-        const payAccName = payAccCode === '2010' ? 'Accounts Payable (Suppliers)' : payAccCode === '1020' ? 'Nabil Bank Main Account' : payAccCode === '1030' ? 'eSewa Merchant Wallet' : 'Cash in Hand';
-        const payAccId = payAccCode === '2010' ? 'acc-2010' : payAccCode === '1020' ? 'acc-1020' : payAccCode === '1030' ? 'acc-1030' : 'acc-1010';
+        const matchedAcc = accounts.find(a => a.code === payAccCode);
+        const payAccName = matchedAcc ? matchedAcc.name : (payAccCode === '2010' ? 'Accounts Payable (Suppliers)' : 'Cash in Hand');
+        const payAccId = matchedAcc ? matchedAcc.id : (payAccCode === '2010' ? 'acc-2010' : 'acc-1010');
 
         const purJE: JournalEntry = {
           id: `je-sync-pur-${pur.id}`,
@@ -2554,47 +3646,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setJournalEntries(updatedJournalEntries);
     }
 
-    // 3. Re-calculate all account balances from journal entries & auto-pull missing account headings
+    // 3. Re-calculate all account balances strictly for existing accounts in Chart of Accounts
     setAccounts(prev => {
-      let currentAccounts = [...prev];
-
-      // Auto-detect journal entry lines with account codes missing from currentAccounts
-      updatedJournalEntries.forEach(je => {
-        je.lines.forEach(line => {
-          if (line.accountCode && !currentAccounts.some(a => a.code === line.accountCode)) {
-            const codePrefix = line.accountCode.substring(0, 1);
-            let category: Account['category'] = 'Assets';
-            let type = 'Current Asset';
-
-            if (codePrefix === '2') {
-              category = 'Liabilities';
-              type = 'Current Liability';
-            } else if (codePrefix === '3') {
-              category = 'Equity';
-              type = 'Equity';
-            } else if (codePrefix === '4') {
-              category = 'Revenue';
-              type = 'Operating Revenue';
-            } else if (codePrefix === '5') {
-              category = 'Expenses';
-              type = 'Operating Expense';
-            }
-
-            currentAccounts.push({
-              id: line.accountId || `acc-${line.accountCode}`,
-              code: line.accountCode,
-              name: line.accountName || `Account ${line.accountCode}`,
-              category,
-              type,
-              balance: 0
-            });
-          }
-        });
-      });
+      const currentAccounts = [...prev];
 
       const accountBalancesMap: Record<string, number> = {};
 
       updatedJournalEntries.forEach(je => {
+        if (je.isReversed) return;
         je.lines.forEach(line => {
           if (!accountBalancesMap[line.accountCode]) {
             accountBalancesMap[line.accountCode] = 0;
@@ -2613,7 +3672,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const next = currentAccounts.map(acc => {
         const computedBal = accountBalancesMap[acc.code];
         if (computedBal !== undefined) {
-          return { ...acc, balance: computedBal };
+          return { ...acc, balance: ((acc as any).openingBalance || 0) + computedBal };
         }
         return acc;
       });
@@ -2622,13 +3681,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return next;
     });
 
-    logAction('Journal Data Synced', 'Accounting', `Pulled and recalculated data from ${updatedJournalEntries.length} Journal Entries across Chart of Accounts.`);
+    logAction('Journal Data Synced', 'Accounting', `Recalculated ledger balances from ${updatedJournalEntries.length} Journal Entries.`);
 
     return {
       entriesCount: updatedJournalEntries.length,
       newEntriesCreated: newEntriesCount,
       accountsCount: accounts.length
     };
+  };
+
+  const deleteAuditLog = (id: string) => {
+    setAuditLogs(prev => {
+      const next = prev.filter(l => l.id !== id);
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const clearAuditLogs = () => {
+    setAuditLogs([]);
+    localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify([]));
   };
 
   const resetToDefaultData = () => {
@@ -2687,8 +3759,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         restoreAllStocksExcept,
         customers,
         addCustomer,
+        updateCustomer,
+        deleteCustomer,
         suppliers,
         addSupplier,
+        updateSupplier,
+        deleteSupplier,
         sales,
         createSale,
         updateSale,
@@ -2696,12 +3772,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         warranties,
         getWarrantyByIdOrMobile,
         getWarrantiesByMobile,
+        updateWarranty,
         updateWarrantyStatus,
         activateWarranty,
+        deleteWarranty,
         addServiceHistory,
+        deleteServiceHistory,
         claims,
         submitClaim,
+        updateClaim,
         updateClaimStatus,
+        deleteClaim,
         addInspection,
         approveClaim,
         updateRepair,
@@ -2709,8 +3790,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         collectClaim,
         replacements,
         createReplacement,
+        deleteReplacement,
         extensions,
         extendWarranty,
+        deleteExtension,
         verificationLogs,
         logVerification,
         notificationTemplates,
@@ -2719,23 +3802,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updateWarrantySettings,
         purchases,
         createPurchase,
+        updatePurchase,
         deletePurchase,
+        supplyItems,
+        createSupplyItem,
+        updateSupplyItem,
+        deleteSupplyItem,
+        supplyPurchases,
+        createSupplyPurchase,
+        updateSupplyPurchase,
+        deleteSupplyPurchase,
+        supplyUsageLogs,
+        logSupplyUsage,
         accounts,
         addAccount,
         updateAccount,
         deleteAccount,
         journalEntries,
         addJournalEntry,
+        updateJournalEntry,
+        deleteJournalEntry,
         postVoucher,
         reverseJournalEntry,
         syncJournalEntriesAndAccounts,
         fiscalYears,
         addFiscalYear,
+        updateFiscalYear,
+        deleteFiscalYear,
         closeFiscalYear,
         costCenters,
         addCostCenter,
+        updateCostCenter,
+        deleteCostCenter,
         fixedAssets,
         addFixedAsset,
+        updateFixedAsset,
+        deleteFixedAsset,
         runAssetDepreciation,
         resetAccountsToDefault,
         homepageContent,
@@ -2747,6 +3849,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         videos,
         updateHeroVideo,
         auditLogs,
+        deleteAuditLog,
+        clearAuditLogs,
         logAction,
         resetToDefaultData,
         globalSearch

@@ -9,6 +9,9 @@ import { Product, Warranty } from '../types';
 import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 import { KALPA_LOGO_DATA_URL } from '../assets/logoData';
+import { LazyImage } from './LazyImage';
+import { WarrantyDetailsModal } from './WarrantyDetailsModal';
+import { formatWarrantyInput } from '../utils/inputMasking';
 
 interface HeroVideoProps {
   setActiveTab: (tab: string) => void;
@@ -40,15 +43,17 @@ const DEFAULT_HIGH_RES_BANNERS = [
 ];
 
 export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch }) => {
-  const { products, banners, videos, homepageContent, getWarrantyByIdOrMobile } = useApp();
+  const { products, banners, videos, homepageContent, getWarrantyByIdOrMobile, getWarrantiesByMobile } = useApp();
   const [isMuted, setIsMuted] = useState(true);
   const [activeBannerIdx, setActiveBannerIdx] = useState(0);
   const [videoError, setVideoError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Quick Warranty Check state on Home Page
+  // Quick Warranty Check state & Popup Modal
   const [quickWarrantyQuery, setQuickWarrantyQuery] = useState('');
-  const [quickWarrantyResult, setQuickWarrantyResult] = useState<Warranty | null | 'not_found'>(null);
+  const [isWarrantyModalOpen, setIsWarrantyModalOpen] = useState(false);
+  const [modalWarranties, setModalWarranties] = useState<Warranty[]>([]);
+  const [modalError, setModalError] = useState<string | null>(null);
 
   const currentVideoUrl = videos[0]?.videoUrl || homepageContent.heroVideoUrl;
   const configuredBanners = banners.filter(b => b.active);
@@ -70,26 +75,32 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
     }
   };
 
-  const [quickSearchError, setQuickSearchError] = useState<string | null>(null);
-
   const handleQuickWarrantySearch = (e: React.FormEvent) => {
     e.preventDefault();
     const raw = quickWarrantyQuery.trim();
     if (!raw) return;
 
-    setQuickSearchError(null);
+    setModalError(null);
     const cleanUpper = raw.toUpperCase();
     const hasLetters = /[A-Za-z]/.test(raw);
 
     // If user enters customer name or alphabetical text that does not start with WRN
     if (hasLetters && !cleanUpper.startsWith('WRN')) {
-      setQuickWarrantyResult('not_found');
-      setQuickSearchError('Verification by Customer Name is strictly disabled. Please enter your Registered 10-digit Mobile Number or official Warranty Number.');
+      setModalWarranties([]);
+      setModalError('Verification by Customer Name is strictly disabled for privacy and anti-counterfeiting security. Please enter your Registered 10-digit Mobile Number (e.g. 9823680863) or official Warranty Number (e.g. WRN-2026-0101).');
+      setIsWarrantyModalOpen(true);
       return;
     }
 
-    const result = getWarrantyByIdOrMobile(raw);
-    setQuickWarrantyResult(result || 'not_found');
+    const singleMatch = getWarrantyByIdOrMobile(raw);
+    if (singleMatch) {
+      setModalWarranties([singleMatch]);
+    } else {
+      const mobileList = getWarrantiesByMobile(raw);
+      setModalWarranties(mobileList);
+    }
+
+    setIsWarrantyModalOpen(true);
   };
 
   const featuredProducts = products.filter(p => p.isFeatured || p.status === 'In Stock').slice(0, 8);
@@ -102,7 +113,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
       <div className="relative w-full min-h-[640px] lg:min-h-[750px] overflow-hidden flex items-center justify-center border-b border-amber-500/20 py-16">
         
         {/* Background Video / Fallback Image with vibrant high clarity */}
-        {!videoError ? (
+        {!videoError && currentVideoUrl && currentVideoUrl.trim() !== '' ? (
           <video
             ref={videoRef}
             key={currentVideoUrl}
@@ -267,19 +278,15 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
               onClick={() => setActiveTab('gallery')}
               className="relative rounded-2xl overflow-hidden border border-amber-500/30 shadow-2xl bg-zinc-950 h-[280px] sm:h-[400px] md:h-[480px] flex items-center justify-center group cursor-pointer"
             >
-              <img
+              <LazyImage
                 src={activeBanners[activeBannerIdx]?.imageUrl}
                 alt={activeBanners[activeBannerIdx]?.title || 'Promotional Banner'}
-                referrerPolicy="no-referrer"
-                crossOrigin="anonymous"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop';
-                }}
+                wrapperClassName="w-full h-full"
                 className="w-full h-full object-cover group-hover:scale-[1.01] transition-transform duration-700"
               />
 
               {/* Slide text banner overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-6 sm:p-10 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent flex flex-col justify-end p-6 sm:p-10 pointer-events-none z-10">
                 <span className="px-3 py-1 bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-mono font-bold rounded-full w-fit mb-2">
                   FEATURED LUXURY SPOTLIGHT
                 </span>
@@ -297,7 +304,7 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
               {activeBanners.length > 1 && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute bottom-6 right-6 flex items-center gap-2 z-10 bg-black/85 border border-amber-500/40 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl"
+                  className="absolute bottom-6 right-6 flex items-center gap-2 z-20 bg-black/85 border border-amber-500/40 backdrop-blur-md px-4 py-2 rounded-full shadow-2xl"
                 >
                   <button
                     onClick={() => setActiveBannerIdx(prev => (prev === 0 ? activeBanners.length - 1 : prev - 1))}
@@ -344,89 +351,44 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
               <Search className="w-4 h-4 text-amber-400 absolute left-4 top-3.5" />
               <input
                 type="text"
-                placeholder="Enter Registered Mobile (e.g. 9823680863) or Warranty Number (WRN-2026-0101)..."
+                placeholder="Enter 10-digit Mobile (e.g. 9823680863) or Warranty ID..."
                 value={quickWarrantyQuery}
+                maxLength={20}
                 onChange={(e) => {
-                  setQuickWarrantyQuery(e.target.value);
-                  setQuickWarrantyResult(null);
+                  const val = e.target.value;
+                  setQuickWarrantyQuery(formatWarrantyInput(val));
                 }}
-                className="w-full bg-zinc-950 border border-amber-500/40 focus:border-amber-400 rounded-xl pl-11 pr-4 py-3 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono"
+                className="w-full bg-zinc-950 border border-amber-500/40 focus:border-amber-400 rounded-xl pl-11 pr-24 py-3 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none font-mono"
               />
+              <div className="absolute right-3 top-2.5 flex items-center gap-1 text-[10px] font-mono">
+                {/^\d+$/.test(quickWarrantyQuery) ? (
+                  <span className={`px-2 py-0.5 rounded font-bold transition-all ${
+                    quickWarrantyQuery.length === 10
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      : 'bg-zinc-800 text-amber-400 border border-zinc-700'
+                  }`}>
+                    {quickWarrantyQuery.length}/10 digits
+                  </span>
+                ) : quickWarrantyQuery.toUpperCase().startsWith('WRN') ? (
+                  <span className="px-2 py-0.5 rounded font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Warranty ID
+                  </span>
+                ) : null}
+              </div>
             </div>
             <button
               type="submit"
-              className="px-6 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-serif font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg flex items-center justify-center gap-2 shrink-0"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 hover:from-amber-400 hover:to-amber-600 text-zinc-950 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg shadow-amber-900/30 flex items-center justify-center gap-2 shrink-0"
             >
               <Search className="w-4 h-4" />
-              <span>Verify Status</span>
+              <span>Verify Record</span>
             </button>
           </form>
 
-          {/* Search Result Display */}
-          {quickSearchError && (
-            <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs space-y-1 max-w-2xl">
-              <div className="font-bold font-mono">⚠️ Verification By Name Not Allowed</div>
-              <p>{quickSearchError}</p>
-            </div>
-          )}
-
-          {!quickSearchError && quickWarrantyResult === 'not_found' && (
-            <div className="p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs space-y-1 max-w-2xl">
-              <div className="font-bold font-mono">⚠️ No Active Warranty Certificate Found</div>
-              <p>Verification is strictly restricted to your <strong>Registered Mobile Number</strong> or official <strong>Warranty Number</strong>. Please check and try again.</p>
-            </div>
-          )}
-
-          {quickWarrantyResult && quickWarrantyResult !== 'not_found' && (
-            <div className="p-5 rounded-2xl bg-zinc-950/90 border border-emerald-500/40 text-zinc-200 space-y-3 max-w-2xl shadow-xl">
-              <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold font-mono text-xs">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>VERIFIED GENUINE TIMEPIECE</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold uppercase">
-                  {quickWarrantyResult.status}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-                <div>
-                  <span className="text-[10px] font-mono text-zinc-500 block uppercase">Watch Model</span>
-                  <span className="font-serif font-bold text-amber-200">{quickWarrantyResult.productBrand} - {quickWarrantyResult.productModel}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-zinc-500 block uppercase">Serial No</span>
-                  <span className="font-mono text-zinc-300">{quickWarrantyResult.serialNumber}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-zinc-500 block uppercase">Valid From (Sales Date)</span>
-                  <span className="font-mono text-zinc-300">{quickWarrantyResult.warrantyStart}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-zinc-500 block uppercase">Expiry Date</span>
-                  <span className="font-mono text-amber-300 font-bold">{quickWarrantyResult.warrantyEnd}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-zinc-500 block uppercase">Warranty ID</span>
-                  <span className="font-mono text-amber-400">{quickWarrantyResult.id}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-mono text-zinc-500 block uppercase">Owner Name</span>
-                  <span className="font-mono text-zinc-300">{quickWarrantyResult.customerName}</span>
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-zinc-800 flex justify-end">
-                <button
-                  onClick={() => setActiveTab('warranty')}
-                  className="text-xs font-mono font-bold text-amber-400 hover:text-amber-200 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span>Open Digital Certificate View</span>
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="text-[11px] font-mono text-zinc-400 flex items-center gap-2 pt-1">
+            <span className="text-amber-400 font-semibold">🔒 Instant Popup:</span>
+            <span>Enter mobile number or warranty ID and press Enter to instantly pop up your genuine digital certificate, live warranty status, and service actions.</span>
+          </div>
         </div>
       </div>
 
@@ -475,6 +437,19 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
           </div>
         </div>
       )}
+
+      {/* 6. AUTOMATIC POPUP WARRANTY DETAILS MODAL */}
+      <WarrantyDetailsModal
+        isOpen={isWarrantyModalOpen}
+        onClose={() => setIsWarrantyModalOpen(false)}
+        query={quickWarrantyQuery}
+        warranties={modalWarranties}
+        errorMessage={modalError}
+        onOpenWarrantyPage={() => {
+          setIsWarrantyModalOpen(false);
+          setActiveTab('warranty');
+        }}
+      />
 
     </div>
   );

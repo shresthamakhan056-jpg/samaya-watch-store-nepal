@@ -1114,15 +1114,21 @@ export const MarketingCMS: React.FC = () => {
             <div className="space-y-2">
               <label className="text-xs text-amber-400 font-mono font-bold block">Current Active Video Stream Preview:</label>
               <div className="relative aspect-video rounded-xl overflow-hidden border border-amber-500/30 bg-black">
-                <video
-                  key={vidUrl}
-                  src={vidUrl}
-                  controls
-                  autoPlay
-                  loop
-                  muted
-                  className="w-full h-full object-cover"
-                />
+                {vidUrl && vidUrl.trim() !== '' ? (
+                  <video
+                    key={vidUrl}
+                    src={vidUrl}
+                    controls
+                    autoPlay
+                    loop
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-zinc-500 font-mono">
+                    No active video URL configured
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1152,7 +1158,11 @@ export const MarketingCMS: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {banners.map(b => (
               <div key={b.id} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 flex gap-4 items-center">
-                <img src={b.imageUrl} alt={b.title} className="w-24 h-20 rounded-lg object-cover border border-amber-500/30 shrink-0" />
+                <img
+                  src={b.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
+                  alt={b.title || 'Slide'}
+                  className="w-24 h-20 rounded-lg object-cover border border-amber-500/30 shrink-0"
+                />
                 <div className="space-y-1 flex-1 text-xs">
                   <span className="text-[10px] font-mono uppercase font-bold text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">
                     {b.type}

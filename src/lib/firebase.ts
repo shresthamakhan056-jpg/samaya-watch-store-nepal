@@ -1,7 +1,27 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, deleteDoc, getDocs } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc as rawSetDoc, onSnapshot, collection, deleteDoc, getDocs, SetOptions } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
+
+/**
+ * Recursively strips undefined fields and converts them so Firestore does not reject the document.
+ */
+export const sanitizeForFirestore = <T>(data: T): T => {
+  if (data === undefined) return null as any;
+  if (data === null || typeof data !== 'object') return data;
+  if (Array.isArray(data)) {
+    return data
+      .filter((item) => item !== undefined)
+      .map((item) => sanitizeForFirestore(item)) as any;
+  }
+  const cleanObj: any = {};
+  for (const [key, value] of Object.entries(data as Record<string, any>)) {
+    if (value !== undefined) {
+      cleanObj[key] = sanitizeForFirestore(value);
+    }
+  }
+  return cleanObj;
+};
 
 let app;
 try {
@@ -28,6 +48,16 @@ try {
 
 export const db = dbInstance;
 
+/**
+ * Safe setDoc wrapper that automatically cleans all undefined fields before sending to Firestore
+ */
+export const setDoc = async (docRef: any, data: any, options?: SetOptions) => {
+  const sanitized = sanitizeForFirestore(data);
+  if (options !== undefined) {
+    return rawSetDoc(docRef, sanitized, options);
+  }
+  return rawSetDoc(docRef, sanitized);
+};
 
 export const signInWithGoogle = async () => {
   try {
@@ -47,5 +77,5 @@ export const logoutFirebase = async () => {
   }
 };
 
-export { onAuthStateChanged, doc, getDoc, setDoc, onSnapshot, collection, deleteDoc, getDocs };
+export { onAuthStateChanged, doc, getDoc, onSnapshot, collection, deleteDoc, getDocs };
 export type { FirebaseUser };

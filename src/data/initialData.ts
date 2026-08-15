@@ -272,7 +272,26 @@ export const INITIAL_PRODUCTS: Product[] = [
   }
 ];
 
-export const INITIAL_CUSTOMERS: Customer[] = [];
+export const INITIAL_CUSTOMERS: Customer[] = [
+  {
+    id: 'cust-1',
+    name: 'Makhan Shrestha',
+    mobile: '9823680863',
+    email: 'shresthamakhan056@gmail.com',
+    address: 'New Road, Kathmandu',
+    totalPurchases: 25000,
+    createdAt: '2026-01-01'
+  },
+  {
+    id: 'cust-2',
+    name: 'Gongabu Watch Collector',
+    mobile: '9851290086',
+    email: 'collector@kalpachhen.com',
+    address: 'Mahalaxmi-7, Lalitpur',
+    totalPurchases: 18500,
+    createdAt: '2026-01-15'
+  }
+];
 
 export const INITIAL_SUPPLIERS: Supplier[] = [
   {
@@ -291,7 +310,52 @@ export const INITIAL_SALES: Sale[] = [];
 
 export const INITIAL_PURCHASES: Purchase[] = [];
 
-export const INITIAL_WARRANTIES: Warranty[] = [];
+export const INITIAL_WARRANTIES: Warranty[] = [
+  {
+    id: 'WRN-2026-0001',
+    salesId: 'sale-init-1',
+    customerId: 'cust-1',
+    customerName: 'Makhan Shrestha',
+    customerMobile: '9823680863',
+    productId: 'prod-karobar-1',
+    productBrand: 'Tissot',
+    productModel: 'PRX Powermatic 80',
+    dialColor: 'Blue',
+    serialNumber: 'TIS-PRX-882910',
+    qrCodeUrl: 'https://kalpachhen.com/warranty?code=WRN-2026-0001',
+    warrantyStart: '2026-01-01',
+    warrantyEnd: '2027-01-01',
+    status: 'Active',
+    activationStatus: 'Active',
+    claimCount: 0,
+    dealerName: 'कल्प',
+    invoiceNumber: 'STW-2026-0001',
+    remarks: 'Official Tissot Swiss Timepiece. Inspected & certified genuine prior to dispatch.',
+    serviceHistory: []
+  },
+  {
+    id: 'WRN-2026-0101',
+    salesId: 'sale-init-2',
+    customerId: 'cust-2',
+    customerName: 'Gongabu Watch Collector',
+    customerMobile: '9851290086',
+    productId: 'prod-karobar-2',
+    productBrand: 'Seiko',
+    productModel: 'Prospex Diver Automatic',
+    dialColor: 'Black',
+    serialNumber: 'SEI-DIV-551920',
+    qrCodeUrl: 'https://kalpachhen.com/warranty?code=WRN-2026-0101',
+    warrantyStart: '2026-01-15',
+    warrantyEnd: '2027-01-15',
+    status: 'Active',
+    activationStatus: 'Active',
+    claimCount: 0,
+    dealerName: 'कल्प',
+    invoiceNumber: 'STW-2026-0101',
+    remarks: 'Official Seiko Automatic Diver. Certified genuine with international coverage.',
+    serviceHistory: []
+  }
+];
 
 export const INITIAL_ACCOUNTS: Account[] = [
   { id: 'acc-1010', code: '1010', name: 'Cash in Hand (Showroom Till)', category: 'Assets', group: 'Current Assets', type: 'Cash', openingBalance: 0, balance: 0, isSystem: true },
@@ -442,4 +506,220 @@ export const INITIAL_WARRANTY_SETTINGS = {
     '६. घडी संकलन (Collection) गर्दा मोबाइलमा प्राप्त OTP वा आधिकारिक डिजिटल हस्ताक्षर प्रस्तुत गर्नुपर्नेछ।'
   ]
 };
+
+export const INITIAL_SUPPLY_ITEMS: any[] = [
+  {
+    id: 'sup-item-1',
+    sku: 'PKG-BOX-LUX-01',
+    name: 'Luxury Wooden Watch Presentation Box (Piano Lacquer)',
+    category: 'Packaging Box',
+    unit: 'pcs',
+    currentStock: 45,
+    reorderLevel: 15,
+    estimatedUnitCost: 1450,
+    supplierName: 'Kathmandu Packaging & Craft Industries',
+    status: 'In Stock',
+    description: 'High-gloss piano finish wooden box with golden hinge and velvet lining for luxury watches',
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'sup-item-2',
+    sku: 'PKG-BOX-STD-02',
+    name: 'Rigid Matte Black Watch Box with Gold Embossed Logo',
+    category: 'Packaging Box',
+    unit: 'pcs',
+    currentStock: 80,
+    reorderLevel: 25,
+    estimatedUnitCost: 450,
+    supplierName: 'Kathmandu Packaging & Craft Industries',
+    status: 'In Stock',
+    description: 'Sturdy rigid cardboard gift box with soft foam insert and gold foil branding',
+    createdAt: '2026-01-10'
+  },
+  {
+    id: 'sup-item-3',
+    sku: 'PKG-BAG-GLD-03',
+    name: 'Gold-Foil Matt Laminated Shopping Bag (Ribbon Handle)',
+    category: 'Shopping & Gift Bag',
+    unit: 'pcs',
+    currentStock: 120,
+    reorderLevel: 30,
+    estimatedUnitCost: 120,
+    supplierName: 'Apex Paper Crafts Nepal',
+    status: 'In Stock',
+    description: 'Heavy GSM luxury shopping bag with satin ribbon handle for customer walk-in deliveries',
+    createdAt: '2026-01-15'
+  },
+  {
+    id: 'sup-item-4',
+    sku: 'PKG-CSH-VEL-04',
+    name: 'Ultra-Soft Cream Velvet Watch Cushion / Pillow Insert',
+    category: 'Cushion & Pillow Insert',
+    unit: 'pcs',
+    currentStock: 65,
+    reorderLevel: 20,
+    estimatedUnitCost: 85,
+    supplierName: 'Kathmandu Packaging & Craft Industries',
+    status: 'In Stock',
+    description: 'Plush velvet pillow cushion to hold watch bracelets and straps securely inside boxes',
+    createdAt: '2026-01-15'
+  },
+  {
+    id: 'sup-item-5',
+    sku: 'PKG-CLT-MIC-05',
+    name: 'Anti-Static Microfiber Watch Polishing & Cleaning Cloth',
+    category: 'Cleaning & Polishing Cloth',
+    unit: 'pcs',
+    currentStock: 150,
+    reorderLevel: 40,
+    estimatedUnitCost: 65,
+    supplierName: 'Nepal Precision Tools & Optics',
+    status: 'In Stock',
+    description: 'Lint-free premium microfiber polishing cloth for sapphire crystal and stainless steel',
+    createdAt: '2026-01-20'
+  },
+  {
+    id: 'sup-item-6',
+    sku: 'PKG-SLV-WRN-06',
+    name: 'Embossed Leatherette Warranty Card & Booklet Sleeve',
+    category: 'Warranty Card & Sleeve',
+    unit: 'pcs',
+    currentStock: 95,
+    reorderLevel: 25,
+    estimatedUnitCost: 110,
+    supplierName: 'Apex Paper Crafts Nepal',
+    status: 'In Stock',
+    description: 'Tri-fold sleeve for digital warranty QR cards, user manuals, and invoice receipts',
+    createdAt: '2026-01-20'
+  },
+  {
+    id: 'sup-item-7',
+    sku: 'SUP-TOOL-LNK-07',
+    name: 'Watch Link Pin Remover & Sizing Adjustment Tool',
+    category: 'Strap & Tool Accessories',
+    unit: 'pcs',
+    currentStock: 35,
+    reorderLevel: 10,
+    estimatedUnitCost: 350,
+    supplierName: 'Nepal Precision Tools & Optics',
+    status: 'In Stock',
+    description: 'Handheld screw-down bracelet pin remover tool given with metal bracelet orders',
+    createdAt: '2026-02-01'
+  },
+  {
+    id: 'sup-item-8',
+    sku: 'SUP-SEAL-HLG-08',
+    name: 'Tamper-Evident Security Hologram Seal Stickers (Roll of 500)',
+    category: 'Security Hologram Seal',
+    unit: 'rolls',
+    currentStock: 12,
+    reorderLevel: 3,
+    estimatedUnitCost: 2200,
+    supplierName: 'Apex Paper Crafts Nepal',
+    status: 'In Stock',
+    description: 'Void-indicating hologram security seals applied over watch caseback and box seams',
+    createdAt: '2026-02-01'
+  },
+  {
+    id: 'sup-item-9',
+    sku: 'SUP-DISP-ACR-09',
+    name: 'Showroom Acrylic Watch Display Stand & C-Clip',
+    category: 'Showroom & Display',
+    unit: 'pcs',
+    currentStock: 28,
+    reorderLevel: 8,
+    estimatedUnitCost: 480,
+    supplierName: 'Nepal Precision Tools & Optics',
+    status: 'In Stock',
+    description: 'Crystal clear acrylic display stand for countertop and vitrine showcase merchandising',
+    createdAt: '2026-02-05'
+  },
+  {
+    id: 'sup-item-10',
+    sku: 'PKG-SHIP-BOX-10',
+    name: 'Reinforced Corrugated Courier Shipping Box (Air Bubble Lined)',
+    category: 'Shipping & Courier Box',
+    unit: 'pcs',
+    currentStock: 110,
+    reorderLevel: 35,
+    estimatedUnitCost: 95,
+    supplierName: 'Apex Paper Crafts Nepal',
+    status: 'In Stock',
+    description: 'Durable 3-ply corrugated box with inner bubble wrap for countrywide courier shipments',
+    createdAt: '2026-02-05'
+  }
+];
+
+export const INITIAL_SUPPLY_PURCHASES: any[] = [
+  {
+    id: 'spo-2026-001',
+    purchaseType: 'Packaging & Boxes',
+    supplierId: 'sup-pkg-1',
+    supplierName: 'Kathmandu Packaging & Craft Industries',
+    invoiceNumber: 'KPC-2026-8812',
+    purchaseDate: '2026-07-20',
+    cost: 72500,
+    quantity: 50,
+    paymentMethod: 'Nabil Bank Account',
+    paymentAccountCode: '1020',
+    accountType: '1210',
+    notes: 'Bulk purchase of luxury wooden piano lacquer watch boxes for premium collections',
+    createdBy: 'Super Admin',
+    items: [
+      {
+        supplyItemId: 'sup-item-1',
+        supplyItemName: 'Luxury Wooden Watch Presentation Box (Piano Lacquer)',
+        category: 'Packaging Box',
+        quantity: 50,
+        unitCost: 1450,
+        totalCost: 72500,
+        unit: 'pcs'
+      }
+    ]
+  },
+  {
+    id: 'spo-2026-002',
+    purchaseType: 'General Store Supplies',
+    supplierId: 'sup-pkg-2',
+    supplierName: 'Apex Paper Crafts Nepal',
+    invoiceNumber: 'APC-INV-4419',
+    purchaseDate: '2026-07-28',
+    cost: 32000,
+    quantity: 318,
+    paymentMethod: 'Cash in Hand',
+    paymentAccountCode: '1010',
+    accountType: '1210',
+    notes: 'Shopping gift bags, microfiber cloths, and warranty card sleeves batch',
+    createdBy: 'Super Admin',
+    items: [
+      {
+        supplyItemId: 'sup-item-3',
+        supplyItemName: 'Gold-Foil Matt Laminated Shopping Bag (Ribbon Handle)',
+        category: 'Shopping & Gift Bag',
+        quantity: 150,
+        unitCost: 120,
+        totalCost: 18000,
+        unit: 'pcs'
+      },
+      {
+        supplyItemId: 'sup-item-5',
+        supplyItemName: 'Anti-Static Microfiber Watch Polishing & Cleaning Cloth',
+        category: 'Cleaning & Polishing Cloth',
+        quantity: 100,
+        unitCost: 65,
+        totalCost: 6500,
+        unit: 'pcs'
+      },
+      {
+        supplyItemId: 'sup-item-6',
+        supplyItemName: 'Embossed Leatherette Warranty Card & Booklet Sleeve',
+        category: 'Warranty Card & Sleeve',
+        quantity: 68,
+        unitCost: 110,
+        totalCost: 7480,
+        unit: 'pcs'
+      }
+    ]
+  }
+];
 

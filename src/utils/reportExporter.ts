@@ -3,7 +3,7 @@
  * Enables exporting all system modules & financial reports to CSV / Excel format.
  */
 
-import { Sale, Product, JournalEntry, Warranty, Purchase, AuditLog, Account } from '../types';
+import { Sale, Product, JournalEntry, Warranty, Purchase, AuditLog, Account, SupplyItem, SupplyPurchase } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import QRCode from 'qrcode';
@@ -787,6 +787,80 @@ export const exportPurchaseReportPDF = (purchases: Purchase[]) => {
   );
 };
 
+// 9b. Supplies & Packaging Purchase Orders Report Export
+export const exportSupplyPurchasesReport = (supplyPurchases: SupplyPurchase[]) => {
+  const headers = [
+    'Supply Order ID',
+    'Invoice Number',
+    'Purchase Category',
+    'Supplier Name',
+    'Purchase Date',
+    'Total Cost (NPR)',
+    'Total Units',
+    'Account Linked',
+    'Items Breakdown',
+    'Notes',
+    'Created By'
+  ];
+
+  const rows = supplyPurchases.map(p => [
+    p.id,
+    p.invoiceNumber,
+    p.purchaseType,
+    p.supplierName,
+    p.purchaseDate,
+    p.cost,
+    p.quantity,
+    p.accountType === '1210' ? 'Acc #1210 (Inventory Asset)' : 'Acc #5020 (Operational Expense)',
+    p.items.map(it => `${it.supplyItemName} (${it.quantity} ${it.unit})`).join('; '),
+    p.notes || '',
+    p.createdBy
+  ]);
+
+  exportToCSV('Supplies_And_Packaging_Procurement_Report', headers, rows);
+};
+
+export const exportSupplyPurchasesReportPDF = (supplyPurchases: SupplyPurchase[]) => {
+  const headers = [
+    'Invoice #',
+    'Date',
+    'Category',
+    'Supplier',
+    'Cost (NPR)',
+    'Units',
+    'Account Code',
+    'Items Summary'
+  ];
+
+  const rows = supplyPurchases.map(p => [
+    p.invoiceNumber,
+    p.purchaseDate,
+    p.purchaseType,
+    p.supplierName,
+    p.cost.toLocaleString(),
+    p.quantity,
+    p.accountType || '1210',
+    p.items.map(it => `${it.supplyItemName} (${it.quantity})`).join(', ')
+  ]);
+
+  const totalCost = supplyPurchases.reduce((acc, p) => acc + p.cost, 0);
+  const totalUnits = supplyPurchases.reduce((acc, p) => acc + p.quantity, 0);
+
+  exportToPDF(
+    'Supplies_Packaging_Procurement_Report',
+    'Packaging & Operational Supplies Procurement Ledger',
+    `Total Supply Orders: ${supplyPurchases.length} | Generated: ${new Date().toLocaleDateString()}`,
+    headers,
+    rows,
+    [
+      { label: 'Supply Orders', value: `${supplyPurchases.length}` },
+      { label: 'Units Procured', value: `${totalUnits} Items` },
+      { label: 'Total Supply Spend', value: `NPR ${totalCost.toLocaleString()}` }
+    ],
+    'landscape'
+  );
+};
+
 // 10. Audit Trail Report Export
 export const exportAuditLogsReport = (auditLogs: AuditLog[]) => {
   const headers = [
@@ -1276,39 +1350,69 @@ export const exportProfitAndLossPDF = (pnl: any, fiscalYear: string) => {
 
 export const exportBalanceSheetPDF = (bs: any, fiscalYear: string) => {
   const rows: (string | number)[][] = [
-    ['--- I. ASSETS ---', '', ''],
+    ['--- I. ASSETS (सम्पत्ति) ---', '', ''],
     ['Current Assets', '', '']
   ];
 
   bs.currentAssets.forEach((a: any) => {
-    rows.push([`  ${a.code}`, a.name, a.amount.toLocaleString()]);
+    rows.push([`  ${a.code}`, a.name, `NPR ${a.amount.toLocaleString()}`]);
   });
-  rows.push(['', 'Total Current Assets', bs.totalCurrentAssets.toLocaleString()]);
+  rows.push(['', 'TOTAL CURRENT ASSETS', `NPR ${bs.totalCurrentAssets.toLocaleString()}`]);
 
-  rows.push(['Fixed Assets (Property & Equipment)', '', '']);
+  rows.push(['Fixed Assets (Property, Plant & Equipment)', '', '']);
   bs.fixedAssets.forEach((a: any) => {
-    rows.push([`  ${a.code}`, a.name, a.amount.toLocaleString()]);
+    rows.push([`  ${a.code}`, a.name, `NPR ${a.amount.toLocaleString()}`]);
   });
-  rows.push(['  1590', 'Less: Accumulated Depreciation', `(${bs.lessAccumulatedDepreciation.toLocaleString()})`]);
-  rows.push(['', 'Net Fixed Assets', bs.netFixedAssets.toLocaleString()]);
-  rows.push(['', 'TOTAL ASSETS', bs.totalAssets.toLocaleString()]);
+  rows.push(['  1590', 'Less: Accumulated Depreciation', `(NPR ${bs.lessAccumulatedDepreciation.toLocaleString()})`]);
+  rows.push(['', 'NET FIXED ASSETS (BOOK VALUE)', `NPR ${bs.netFixedAssets.toLocaleString()}`]);
 
-  rows.push(['--- II. LIABILITIES ---', '', '']);
+  if (bs.otherAssets && bs.otherAssets.length > 0) {
+    rows.push(['Other Non-Current Assets', '', '']);
+    bs.otherAssets.forEach((a: any) => {
+      rows.push([`  ${a.code}`, a.name, `NPR ${a.amount.toLocaleString()}`]);
+    });
+  }
+
+  rows.push(['', 'TOTAL ASSETS (A)', `NPR ${bs.totalAssets.toLocaleString()}`]);
+
+  rows.push(['--- II. LIABILITIES (चालु तथा दीर्घकालीन दायित्व) ---', '', '']);
   rows.push(['Current Liabilities', '', '']);
   bs.currentLiabilities.forEach((l: any) => {
-    rows.push([`  ${l.code}`, l.name, l.amount.toLocaleString()]);
+    rows.push([`  ${l.code}`, l.name, `NPR ${l.amount.toLocaleString()}`]);
   });
-  rows.push(['', 'Total Current Liabilities', bs.totalCurrentLiabilities.toLocaleString()]);
+  if (bs.longTermLiabilities && bs.longTermLiabilities.length > 0) {
+    rows.push(['Long-Term Liabilities', '', '']);
+    bs.longTermLiabilities.forEach((l: any) => {
+      rows.push([`  ${l.code}`, l.name, `NPR ${l.amount.toLocaleString()}`]);
+    });
+  }
+  rows.push(['', 'TOTAL LIABILITIES (L)', `NPR ${bs.totalLiabilities.toLocaleString()}`]);
 
-  rows.push(['--- III. EQUITY ---', '', '']);
-  bs.equityItems.forEach((e: any) => {
-    rows.push([`  ${e.code}`, e.name, e.amount.toLocaleString()]);
-  });
-  rows.push(['  3020', 'Retained Earnings (Prior Years)', bs.retainedEarningsPrior.toLocaleString()]);
-  rows.push(['', 'Current Period Net Profit / (Loss)', bs.currentPeriodNetIncome.toLocaleString()]);
-  rows.push(['', 'Total Equity', bs.totalEquity.toLocaleString()]);
-  rows.push(['', 'TOTAL LIABILITIES & EQUITY', bs.totalLiabilitiesAndEquity.toLocaleString()]);
-  rows.push(['', 'BALANCE CHECK (Assets - Liab & Equity)', `${bs.balanceDifference.toLocaleString()} [${bs.isBalanced ? 'MATCHED' : 'UNBALANCED'}]`]);
+  rows.push(['--- III. HEAD: OWNER\'S EQUITY & CAPITAL (मालिकको पुँजी) ---', '', '']);
+  rows.push(['  3010', 'Owner Initial & Contributed Capital', `NPR ${(bs.ownerCapital || 0).toLocaleString()}`]);
+  if (bs.ownerDrawings && bs.ownerDrawings > 0) {
+    rows.push(['  3030', 'Less: Owner Drawings / Withdrawals', `(NPR ${bs.ownerDrawings.toLocaleString()})`]);
+  }
+  if (bs.ownersCapitalItems) {
+    bs.ownersCapitalItems.filter((i: any) => i.code !== '3010' && i.code !== '3030').forEach((c: any) => {
+      rows.push([`  ${c.code}`, c.name, `NPR ${c.amount.toLocaleString()}`]);
+    });
+  }
+  rows.push(['', 'SUBTOTAL OWNER\'S CAPITAL', `NPR ${(bs.totalOwnersCapital || bs.ownerCapital || 0).toLocaleString()}`]);
+
+  rows.push(['--- IV. HEAD: RETAINED EARNINGS & ACCUMULATED PROFIT (सञ्चित नाफा) ---', '', '']);
+  rows.push(['  3020', 'Retained Earnings (Beginning / Prior Period)', `NPR ${(bs.retainedEarningsPrior || 0).toLocaleString()}`]);
+  rows.push(['  P&L', 'Net Profit / (Loss) for Current Period (Income Statement)', `NPR ${(bs.currentPeriodNetIncome || 0).toLocaleString()}`]);
+  if (bs.otherReserves && bs.otherReserves.length > 0) {
+    bs.otherReserves.forEach((r: any) => {
+      rows.push([`  ${r.code}`, r.name, `NPR ${r.amount.toLocaleString()}`]);
+    });
+  }
+  rows.push(['', 'SUBTOTAL RETAINED EARNINGS & SURPLUS', `NPR ${(bs.totalRetainedEarnings || 0).toLocaleString()}`]);
+
+  rows.push(['', 'TOTAL OWNER\'S EQUITY (E)', `NPR ${bs.totalEquity.toLocaleString()}`]);
+  rows.push(['', 'TOTAL LIABILITIES & EQUITY (L + E)', `NPR ${bs.totalLiabilitiesAndEquity.toLocaleString()}`]);
+  rows.push(['', 'EQUATION BALANCE CHECK (A - L - E)', `NPR ${Math.abs(bs.balanceDifference || 0).toLocaleString()} [${bs.isBalanced ? 'BALANCED' : 'UNBALANCED'}]`]);
 
   exportToPDF(
     `Balance_Sheet_${fiscalYear.replace(/\s+/g, '_')}`,
@@ -1319,8 +1423,10 @@ export const exportBalanceSheetPDF = (bs: any, fiscalYear: string) => {
     [
       { label: 'Total Assets', value: `NPR ${bs.totalAssets.toLocaleString()}` },
       { label: 'Total Liabilities', value: `NPR ${bs.totalLiabilities.toLocaleString()}` },
+      { label: 'Owner\'s Capital', value: `NPR ${(bs.totalOwnersCapital || bs.ownerCapital || 0).toLocaleString()}` },
+      { label: 'Retained Earnings', value: `NPR ${(bs.totalRetainedEarnings || 0).toLocaleString()}` },
       { label: 'Total Equity', value: `NPR ${bs.totalEquity.toLocaleString()}` },
-      { label: 'Balance Check', value: bs.isBalanced ? 'BALANCED' : 'MISMATCH' }
+      { label: 'Balance Equilibrium', value: bs.isBalanced ? 'PERFECT (0.00 Diff)' : 'MISMATCH' }
     ],
     'portrait'
   );

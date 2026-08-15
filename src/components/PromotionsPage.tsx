@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sparkles, Calendar, ArrowRight, Tag, Gift } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { LazyImage } from './LazyImage';
 
 interface PromotionsPageProps {
   setActiveTab: (tab: string) => void;
@@ -62,18 +63,14 @@ export const PromotionsPage: React.FC<PromotionsPageProps> = ({ setActiveTab }) 
               className="bg-zinc-900 border border-amber-500/30 rounded-2xl overflow-hidden shadow-2xl flex flex-col justify-between group"
             >
               <div className="relative h-64 sm:h-72 overflow-hidden bg-black">
-                <img
+                <LazyImage
                   src={banner.imageUrl}
                   alt={banner.title}
-                  referrerPolicy="no-referrer"
-                  crossOrigin="anonymous"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop';
-                  }}
+                  wrapperClassName="w-full h-full"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent" />
-                <span className="absolute top-3 left-3 bg-amber-500 text-zinc-950 text-[10px] font-bold font-mono uppercase px-2.5 py-1 rounded shadow">
+                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent pointer-events-none" />
+                <span className="absolute top-3 left-3 z-10 bg-amber-500 text-zinc-950 text-[10px] font-bold font-mono uppercase px-2.5 py-1 rounded shadow">
                   {banner.type || 'Special'} Campaign
                 </span>
               </div>
