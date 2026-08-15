@@ -70,10 +70,25 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
     }
   };
 
+  const [quickSearchError, setQuickSearchError] = useState<string | null>(null);
+
   const handleQuickWarrantySearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickWarrantyQuery.trim()) return;
-    const result = getWarrantyByIdOrMobile(quickWarrantyQuery);
+    const raw = quickWarrantyQuery.trim();
+    if (!raw) return;
+
+    setQuickSearchError(null);
+    const cleanUpper = raw.toUpperCase();
+    const hasLetters = /[A-Za-z]/.test(raw);
+
+    // If user enters customer name or alphabetical text that does not start with WRN
+    if (hasLetters && !cleanUpper.startsWith('WRN')) {
+      setQuickWarrantyResult('not_found');
+      setQuickSearchError('Verification by Customer Name is strictly disabled. Please enter your Registered 10-digit Mobile Number or official Warranty Number.');
+      return;
+    }
+
+    const result = getWarrantyByIdOrMobile(raw);
     setQuickWarrantyResult(result || 'not_found');
   };
 
@@ -450,7 +465,14 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
           </form>
 
           {/* Search Result Display */}
-          {quickWarrantyResult === 'not_found' && (
+          {quickSearchError && (
+            <div className="p-4 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs space-y-1 max-w-2xl">
+              <div className="font-bold font-mono">⚠️ Verification By Name Not Allowed</div>
+              <p>{quickSearchError}</p>
+            </div>
+          )}
+
+          {!quickSearchError && quickWarrantyResult === 'not_found' && (
             <div className="p-4 rounded-xl bg-red-950/60 border border-red-500/40 text-red-200 text-xs space-y-1 max-w-2xl">
               <div className="font-bold font-mono">⚠️ No Active Warranty Certificate Found</div>
               <p>Verification is strictly restricted to your <strong>Registered Mobile Number</strong> or official <strong>Warranty Number</strong>. Please check and try again.</p>

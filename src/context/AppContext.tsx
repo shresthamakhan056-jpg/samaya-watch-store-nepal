@@ -1512,15 +1512,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const cleanUpper = raw.toUpperCase();
     const cleanDigits = raw.replace(/\D/g, '');
+    const hasLetters = /[A-Za-z]/.test(raw);
 
-    // 1. Strict Warranty Number (Warranty ID) Verification Only
-    const foundById = warranties.find(w => w.id.toUpperCase() === cleanUpper);
-    if (foundById) {
-      return syncWarrantyWithSalesDate(foundById);
+    // 1. Strict Warranty Number (Warranty Card ID) Verification Only
+    // Must match exact warranty ID (e.g. WRN-2026-0001, WRN-...)
+    if (cleanUpper.startsWith('WRN') || warranties.some(w => w.id.toUpperCase() === cleanUpper)) {
+      const foundById = warranties.find(w => w.id.toUpperCase() === cleanUpper);
+      if (foundById) {
+        return syncWarrantyWithSalesDate(foundById);
+      }
+      return undefined;
+    }
+
+    // If query has alphabetical letters and is NOT a warranty number (e.g., someone typing a customer name), REJECT immediately
+    if (hasLetters) {
+      return undefined;
     }
 
     // 2. Strict Registered Mobile Number Verification Only
-    if (cleanDigits.length >= 7) {
+    // Must be pure phone/digit format with at least 7 digits (e.g. 9823680863, +9779823680863)
+    const isPhonePattern = /^[\d\s+\-()]{7,15}$/.test(raw);
+    if (isPhonePattern && cleanDigits.length >= 7) {
       const foundByMobile = warranties.find(w => {
         const wDigits = w.customerMobile.replace(/\D/g, '');
         if (!wDigits) return false;
@@ -1537,13 +1549,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     }
 
-    // Disallowed: Do NOT verify by Serial Number, Invoice Number, or customer name
+    // Disallowed: Verification by customer name, serial number, or invoice number is blocked
     return undefined;
   };
 
   const getWarrantiesByMobile = (mobile: string): Warranty[] => {
-    const cleanDigits = (mobile || '').replace(/\D/g, '');
-    if (!cleanDigits || cleanDigits.length < 7) return [];
+    const raw = (mobile || '').trim();
+    const cleanDigits = raw.replace(/\D/g, '');
+    const hasLetters = /[A-Za-z]/.test(raw);
+
+    // If input contains alphabetical letters (e.g. customer name) or is not phone format, reject immediately
+    if (hasLetters || cleanDigits.length < 7) return [];
 
     return warranties
       .filter(w => {

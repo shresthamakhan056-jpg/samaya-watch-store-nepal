@@ -28,9 +28,25 @@ export const WarrantyPage: React.FC = () => {
     }
   }, [warranties]);
 
+  const [queryError, setQueryError] = useState<string | null>(null);
+
   const handleSearch = (searchVal?: string) => {
     const term = (searchVal !== undefined ? searchVal : query).trim();
     if (!term) return;
+
+    setQueryError(null);
+    const cleanUpper = term.toUpperCase();
+    const cleanDigits = term.replace(/\D/g, '');
+    const hasLetters = /[A-Za-z]/.test(term);
+
+    // If query has alphabetical letters and is NOT a warranty number starting with WRN, explicitly reject with warning
+    if (hasLetters && !cleanUpper.startsWith('WRN')) {
+      setSearched(true);
+      setSelectedWarranty(null);
+      setMatchingList([]);
+      setQueryError('Verification by Customer Name is strictly disabled for privacy and anti-counterfeiting security. Please verify using your 10-digit Registered Mobile Number (e.g. 9823680863) or official Warranty Number (e.g. WRN-2026-0101).');
+      return;
+    }
 
     setSearched(true);
     const foundDirect = getWarrantyByIdOrMobile(term);
@@ -38,7 +54,7 @@ export const WarrantyPage: React.FC = () => {
     if (foundDirect) {
       setSelectedWarranty(foundDirect);
       setMatchingList([foundDirect]);
-      logVerification(foundDirect.id, term.includes('WRN') ? 'Warranty ID' : 'Mobile Search', 'Success');
+      logVerification(foundDirect.id, term.toUpperCase().startsWith('WRN') ? 'Warranty ID' : 'Mobile Search', 'Success');
     } else {
       const list = getWarrantiesByMobile(term);
       if (list.length > 0) {
@@ -157,6 +173,20 @@ export const WarrantyPage: React.FC = () => {
           </div>
         </div>
 
+        {/* QUERY ERROR (E.G. ATTEMPTING NAME VERIFICATION) */}
+        {queryError && (
+          <div className="bg-rose-950/80 border-2 border-rose-500/50 p-4 rounded-2xl flex items-center justify-between text-rose-200 text-xs font-mono">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 text-rose-400 shrink-0" />
+              <div>
+                <div className="font-bold text-sm text-rose-100">Verification By Name Not Allowed</div>
+                <div className="text-zinc-300 mt-0.5">{queryError}</div>
+              </div>
+            </div>
+            <button onClick={() => setQueryError(null)} className="text-rose-400 hover:text-white text-base">✕</button>
+          </div>
+        )}
+
         {/* CLAIM SUCCESS NOTIFICATION */}
         {claimSubmitted && (
           <div className="bg-emerald-950/90 border-2 border-emerald-500/60 p-4 rounded-2xl flex items-center justify-between text-emerald-200 text-xs font-mono">
@@ -268,8 +298,8 @@ export const WarrantyPage: React.FC = () => {
                 <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl text-[11px] text-zinc-400 max-w-md mx-auto space-y-1 text-left">
                   <div className="font-bold text-amber-400">⚠️ Verification Rules:</div>
                   <ul className="list-disc list-inside space-y-0.5 text-zinc-300">
-                    <li>Verification is permitted <strong>only</strong> via <strong>Registered Mobile Number</strong> or official <strong>Warranty Number</strong> (e.g. WRN-2026-0101).</li>
-                    <li>Verification by serial numbers, invoice numbers, or other details is disabled for privacy and anti-counterfeiting security.</li>
+                    <li>Verification is permitted <strong>only</strong> via <strong>Registered Mobile Number</strong> (e.g. 9823680863) or official <strong>Warranty Number</strong> (e.g. WRN-2026-0101).</li>
+                    <li>Verification by <strong>Customer Name</strong>, watch serial numbers, or invoice numbers is strictly disabled for privacy and anti-counterfeiting security.</li>
                   </ul>
                 </div>
                 <div className="pt-2">
