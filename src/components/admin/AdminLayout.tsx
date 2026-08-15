@@ -12,7 +12,6 @@ import { MarketingCMS } from './MarketingCMS';
 import { ReportsModule } from './ReportsModule';
 import { UserManagement } from './UserManagement';
 import { AuditLogsModule } from './AuditLogsModule';
-import { DomainGoLiveGuide } from './DomainGoLiveGuide';
 
 interface AdminLayoutProps {
   setIsAdminOpen: (open: boolean) => void;
@@ -21,7 +20,7 @@ interface AdminLayoutProps {
 export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
   const { currentUser, setCurrentUser, users, globalSearch, loginStaffUser, homepageContent, updateHomepageContent } = useApp();
   const [adminTab, setAdminTab] = useState<
-    'dashboard' | 'sales' | 'purchases' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit' | 'domain'
+    'dashboard' | 'sales' | 'purchases' | 'inventory' | 'warranty' | 'accounting' | 'customers' | 'cms' | 'reports' | 'users' | 'audit'
   >('dashboard');
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,7 +40,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
       setIsAuthorized(true);
       setLoginError('');
     } else {
-      setLoginError('Invalid Username or Password! (Default Super Admin: admin / admin123)');
+      setLoginError('Invalid Username or Password. Please try again.');
     }
   };
 
@@ -75,7 +74,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               INTERNAL ERP SYSTEM
             </span>
             <h2 className="font-serif text-2xl font-bold text-amber-100 uppercase">
-              समय- THE WATCH <span className="text-amber-500">STORE</span>
+              कल्प <span className="text-amber-500">LUXURY BOUTIQUE</span>
             </h2>
             <p className="text-xs text-zinc-400 leading-relaxed">
               Authentication required. Enter your staff username and password to log in.
@@ -88,10 +87,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               <input
                 type="text"
                 required
-                placeholder="Enter username (e.g. admin)"
+                placeholder="Enter staff username"
                 value={usernameInput}
                 onChange={(e) => setUsernameInput(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-amber-300 font-mono"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-amber-300 font-mono focus:border-amber-500/50 focus:outline-none"
               />
             </div>
 
@@ -100,10 +99,10 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               <input
                 type="password"
                 required
-                placeholder="Enter password (e.g. admin123)"
+                placeholder="Enter staff password"
                 value={passwordInput}
                 onChange={(e) => setPasswordInput(e.target.value)}
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono"
+                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-zinc-100 font-mono focus:border-amber-500/50 focus:outline-none"
               />
             </div>
 
@@ -121,12 +120,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               <span>Sign In to ERP Portal</span>
             </button>
           </form>
-
-          <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800/80 text-[11px] text-zinc-400 space-y-1 font-mono">
-            <div className="text-amber-400 font-bold">Default Demo Credentials:</div>
-            <div>Username: <strong className="text-zinc-200">admin</strong></div>
-            <div>Password: <strong className="text-zinc-200">admin123</strong></div>
-          </div>
 
           <div className="pt-2 border-t border-zinc-800/80 text-center">
             <button
@@ -160,7 +153,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
     { id: 'customers', label: 'Customers & Suppliers', icon: Users },
     { id: 'cms', label: 'Marketing CMS', icon: Sparkles },
     { id: 'reports', label: 'Reports & Tax', icon: BarChart3 },
-    { id: 'domain', label: 'Domain & Go Live', icon: Globe, badge: 'Live Guide' },
     { id: 'users', label: 'Staff Roles (RBAC)', icon: UserCheck },
     { id: 'audit', label: 'Audit Logs', icon: ShieldAlert },
   ];
@@ -177,7 +169,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
               INTERNAL ERP SYSTEM
             </span>
             <h1 className="font-serif text-lg font-bold text-amber-100 uppercase">
-              समय- THE WATCH <span className="text-amber-500">STORE</span>
+              कल्प <span className="text-amber-500">LUXURY BOUTIQUE</span>
             </h1>
           </div>
 
@@ -400,7 +392,6 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({ setIsAdminOpen }) => {
         {adminTab === 'customers' && <CustomerSupplierModule />}
         {adminTab === 'cms' && <MarketingCMS />}
         {adminTab === 'reports' && <ReportsModule />}
-        {adminTab === 'domain' && <DomainGoLiveGuide />}
         {adminTab === 'users' && <UserManagement />}
         {adminTab === 'audit' && <AuditLogsModule />}
 

@@ -399,7 +399,7 @@ export const INITIAL_NOTIFICATION_TEMPLATES = [
     id: 'tmpl-1',
     eventKey: 'SALE_WARRANTY_ISSUED',
     title: 'Digital Warranty Created - कल्प',
-    body: 'Dear {{customerName}}, your purchase of {{watchModel}} comes with an official digital warranty {{warrantyId}}. Verify at: https://samaya-watch-store-nepal.ai.studio/warranty?code={{warrantyId}}',
+    body: 'Dear {{customerName}}, your purchase of {{watchModel}} comes with an official digital warranty {{warrantyId}}. Verify at: https://kalpachhen.com/warranty?code={{warrantyId}}',
     channels: ['SMS', 'WhatsApp']
   },
   {

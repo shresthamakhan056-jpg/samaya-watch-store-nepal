@@ -79,7 +79,7 @@ export const exportToPDF = (
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
-  doc.text('SAMAYA WATCH STORE', 14, 12);
+  doc.text('KALPA LUXURY WATCHES (कल्प)', 14, 12);
 
   doc.setFontSize(11);
   doc.setTextColor(245, 158, 11);

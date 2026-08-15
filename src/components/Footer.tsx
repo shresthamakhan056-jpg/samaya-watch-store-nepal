@@ -3,7 +3,7 @@ import { ShieldCheck, ArrowUpRight, X, FileText } from 'lucide-react';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 import { useApp } from '../context/AppContext';
 import { FooterLinkItem } from '../types';
-import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
+import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 
 interface FooterProps {
   setActiveTab: (tab: string) => void;
@@ -61,10 +61,11 @@ export const Footer: React.FC<FooterProps> = () => {
             <ul className="space-y-2.5 text-xs">
               <li>
                 <a
-                  href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
+                  href={resolveSocialUrl('tiktok', homepageContent.tiktokLink)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-pink-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-white transition-all group"
+                  onClick={(e) => openSocialUrl(resolveSocialUrl('tiktok', homepageContent.tiktokLink), e)}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-pink-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-white transition-all group cursor-pointer"
                 >
                   <span className="flex items-center gap-2.5 font-medium">
                     <span className="w-6 h-6 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-pink-500/50 group-hover:text-white transition-colors">
@@ -77,10 +78,11 @@ export const Footer: React.FC<FooterProps> = () => {
               </li>
               <li>
                 <a
-                  href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
+                  href={resolveSocialUrl('instagram', homepageContent.instagramLink)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-pink-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-pink-300 transition-all group"
+                  onClick={(e) => openSocialUrl(resolveSocialUrl('instagram', homepageContent.instagramLink), e)}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-pink-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-pink-300 transition-all group cursor-pointer"
                 >
                   <span className="flex items-center gap-2.5 font-medium">
                     <span className="w-6 h-6 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-pink-500/50 group-hover:text-pink-400 transition-colors">
@@ -93,10 +95,11 @@ export const Footer: React.FC<FooterProps> = () => {
               </li>
               <li>
                 <a
-                  href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
+                  href={resolveSocialUrl('facebook', homepageContent.facebookLink)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-blue-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-blue-300 transition-all group"
+                  onClick={(e) => openSocialUrl(resolveSocialUrl('facebook', homepageContent.facebookLink), e)}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 hover:border-blue-500/40 hover:bg-zinc-900 text-zinc-300 hover:text-blue-300 transition-all group cursor-pointer"
                 >
                   <span className="flex items-center gap-2.5 font-medium">
                     <span className="w-6 h-6 rounded-lg bg-zinc-950 border border-zinc-800 flex items-center justify-center group-hover:border-blue-500/50 group-hover:text-blue-400 transition-colors">

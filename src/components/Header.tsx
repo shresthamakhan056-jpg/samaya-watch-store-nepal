@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, Watch, ShoppingBag, Radio, Sparkles, UserCheck, Menu, X, Phone } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
-import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
+import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 
 interface HeaderProps {
   activeTab: string;
@@ -19,6 +19,10 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
   const { homepageContent } = useApp();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const tiktokUrl = resolveSocialUrl('tiktok', homepageContent.tiktokLink);
+  const instagramUrl = resolveSocialUrl('instagram', homepageContent.instagramLink);
+  const facebookUrl = resolveSocialUrl('facebook', homepageContent.facebookLink);
 
   const navItems = [
     { id: 'home', label: 'Home' },
@@ -80,7 +84,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }`}
               >
                 <span className="flex items-center gap-2">
-                  {item.id === 'warranty' && <ShieldCheck className="w-4 h-4 text-amber-400" />}
+                  {item.id === 'warranty' && <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />}
                   {item.label}
                 </span>
               </button>
@@ -92,28 +96,31 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Social quick icons */}
             <div className="flex items-center gap-2 border-r border-amber-500/20 pr-3 mr-1">
               <a
-                href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
+                href={tiktokUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-[#000000] hover:border-pink-500/50 transition-all shadow-sm group"
-                title="Follow us on TikTok"
+                onClick={(e) => openSocialUrl(tiktokUrl, e)}
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-white hover:bg-black hover:border-pink-500/50 transition-all shadow-sm group cursor-pointer"
+                title="Follow us on TikTok (@kalpa9741)"
               >
                 <TikTokIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
               </a>
               <a
-                href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
+                href={instagramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-pink-400 hover:border-pink-500/50 hover:bg-gradient-to-tr hover:from-amber-500/20 hover:to-pink-500/20 transition-all shadow-sm group"
-                title="Follow us on Instagram"
+                onClick={(e) => openSocialUrl(instagramUrl, e)}
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-pink-400 hover:border-pink-500/50 hover:bg-gradient-to-tr hover:from-amber-500/20 hover:to-pink-500/20 transition-all shadow-sm group cursor-pointer"
+                title="Follow us on Instagram (@kalpa_watch)"
               >
                 <InstagramIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
               </a>
               <a
-                href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
+                href={facebookUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-blue-400 hover:border-blue-500/50 hover:bg-blue-950/40 transition-all shadow-sm group"
+                onClick={(e) => openSocialUrl(facebookUrl, e)}
+                className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-300 hover:text-blue-400 hover:border-blue-500/50 hover:bg-blue-950/40 transition-all shadow-sm group cursor-pointer"
                 title="Visit our Facebook Page"
               >
                 <FacebookIcon className="w-4 h-4 group-hover:scale-110 transition-transform" />
@@ -154,27 +161,63 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#0A0A0B] border-b border-amber-500/20 px-4 pt-2 pb-6 space-y-2">
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => {
-                setActiveTab(item.id);
-                setIsAdminOpen(false);
-                setMobileMenuOpen(false);
-              }}
-              className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                !isAdminOpen && activeTab === item.id
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                  : 'text-zinc-300 hover:bg-zinc-900'
-              }`}
+        <div className="lg:hidden bg-[#0A0A0B] border-b border-amber-500/20 px-4 pt-2 pb-6 space-y-3">
+          <div className="space-y-1">
+            {navItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setIsAdminOpen(false);
+                  setMobileMenuOpen(false);
+                }}
+                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                  !isAdminOpen && activeTab === item.id
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    : 'text-zinc-300 hover:bg-zinc-900'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  {item.id === 'warranty' && <ShieldCheck className="w-4 h-4 text-amber-400" />}
+                  {item.label}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Mobile Social Links */}
+          <div className="pt-3 border-t border-zinc-800 flex items-center justify-center gap-3">
+            <a
+              href={tiktokUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => openSocialUrl(tiktokUrl, e)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-white cursor-pointer"
             >
-              <div className="flex items-center gap-2">
-                {item.id === 'warranty' && <ShieldCheck className="w-4 h-4 text-amber-400" />}
-                {item.label}
-              </div>
-            </button>
-          ))}
+              <TikTokIcon className="w-4 h-4" />
+              <span>TikTok</span>
+            </a>
+            <a
+              href={instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => openSocialUrl(instagramUrl, e)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-pink-400 cursor-pointer"
+            >
+              <InstagramIcon className="w-4 h-4" />
+              <span>Instagram</span>
+            </a>
+            <a
+              href={facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => openSocialUrl(facebookUrl, e)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 hover:text-blue-400 cursor-pointer"
+            >
+              <FacebookIcon className="w-4 h-4" />
+              <span>Facebook</span>
+            </a>
+          </div>
         </div>
       )}
     </header>

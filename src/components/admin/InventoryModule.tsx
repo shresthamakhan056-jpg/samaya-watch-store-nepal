@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Plus, Search, AlertTriangle, Layers, Edit, Trash2, Watch, ArrowUpDown, ShieldCheck, Download, FileText, Upload, Sparkles, Copy, X, Check, BarChart2 } from 'lucide-react';
+import { Plus, Search, AlertTriangle, Layers, Edit, Trash2, Watch, ArrowUpDown, ShieldCheck, Download, FileText, Upload, Sparkles, Copy, X, Check, BarChart2, Image as ImageIcon } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Product, MovementType, Gender, ProductStatus } from '../../types';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { exportInventoryReport, exportInventoryReportPDF } from '../../utils/reportExporter';
 import { BrandStockVisualization } from './BrandStockVisualization';
+import { compressImageFile } from '../../utils/imageCompressor';
 
 export const InventoryModule: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct, adjustStock, restoreAllStocksExcept, suppliers, currentUser } = useApp();
@@ -103,41 +104,71 @@ export const InventoryModule: React.FC = () => {
     setEditSupplierId(p.supplierId || 'sup-1');
   };
 
-  // Image File Upload Handler for Edit Modal
-  const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // High-Resolution Image File Upload Handler for Edit Modal
+  const handleEditImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploadingImage(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      if (!dataUrl) {
-        setIsUploadingImage(false);
-        return;
+    try {
+      // Create crystal clear, high-resolution optimized data URL (1400x1400, 0.88 quality)
+      const compressedDataUrl = await compressImageFile(file, 1400, 1400, 0.88);
+      if (compressedDataUrl) {
+        setEditImageUrl(compressedDataUrl);
       }
 
-      try {
-        const response = await fetch('/api/upload-media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileData: dataUrl,
-            fileName: file.name,
-            mimeType: file.type
-          })
-        });
+      // Try server upload as well
+      fetch('/api/upload-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileData: compressedDataUrl,
+          fileName: file.name,
+          mimeType: file.type
+        })
+      }).then(res => res.json()).then(result => {
+        if (result?.url) {
+          // If server hosted successfully, keep the clean URL or the base64
+          console.log('Image uploaded to server:', result.url);
+        }
+      }).catch(() => {});
+    } catch (err) {
+      console.error('Error uploading edit image:', err);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
 
-        const result = await response.json();
-        const hostedUrl = result.url || dataUrl;
-        setEditImageUrl(hostedUrl);
-      } catch (err) {
-        setEditImageUrl(dataUrl);
-      } finally {
-        setIsUploadingImage(false);
+  // High-Resolution Image File Upload Handler for Add Modal
+  const handleAddImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingImage(true);
+    try {
+      const compressedDataUrl = await compressImageFile(file, 1400, 1400, 0.88);
+      if (compressedDataUrl) {
+        setImageUrl(compressedDataUrl);
       }
-    };
-    reader.readAsDataURL(file);
+
+      fetch('/api/upload-media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileData: compressedDataUrl,
+          fileName: file.name,
+          mimeType: file.type
+        })
+      }).then(res => res.json()).then(result => {
+        if (result?.url) {
+          console.log('Image uploaded to server:', result.url);
+        }
+      }).catch(() => {});
+    } catch (err) {
+      console.error('Error uploading new image:', err);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Save Edit Form
@@ -400,6 +431,7 @@ export const InventoryModule: React.FC = () => {
                       <img
                         src={p.images && p.images.length > 0 ? p.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
                         alt={p.model}
+                        onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'; }}
                         className="w-12 h-12 rounded-lg object-cover border border-amber-500/30 bg-black shrink-0"
                       />
                       <div>
@@ -984,9 +1016,39 @@ export const InventoryModule: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="text-zinc-400 block mb-1">Image URL</label>
-                <input type="text" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-zinc-100 font-mono" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+                <div className="sm:col-span-2 space-y-2">
+                  <label className="text-zinc-400 block font-semibold text-xs">Image URL or Upload Watch Photo</label>
+                  <input
+                    type="text"
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    placeholder="https://images.unsplash.com/..."
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-100 font-mono text-[11px] focus:border-amber-500/60 focus:outline-none"
+                  />
+
+                  <label className={`inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs ${isUploadingImage ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-amber-500/30'}`}>
+                    <Upload className="w-3.5 h-3.5 text-amber-400" />
+                    <span>{isUploadingImage ? 'Uploading Image...' : 'Upload Watch Photo'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={isUploadingImage}
+                      onChange={handleAddImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <div className="flex flex-col items-center justify-center p-2 bg-zinc-950 border border-zinc-800 rounded-xl">
+                  <span className="text-[10px] text-zinc-500 mb-1">Image Preview</span>
+                  <img
+                    src={imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
+                    alt="Watch Preview"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'; }}
+                    className="w-20 h-20 object-cover rounded-lg border border-amber-500/30 bg-black"
+                  />
+                </div>
               </div>
 
               <div className="pt-2 flex justify-end gap-2">

@@ -151,36 +151,9 @@ export const WarrantyPage: React.FC = () => {
             </button>
           </form>
 
-          {/* Quick Demo Shortcuts */}
+          {/* Quick Search Helper */}
           <div className="pt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-400 font-mono">
-            <span className="text-[11px] text-zinc-500">Quick Demo Verification:</span>
-            <button
-              onClick={() => {
-                setQuery('9851234567');
-                handleSearch('9851234567');
-              }}
-              className="px-2.5 py-1 rounded bg-zinc-950 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 cursor-pointer text-[11px]"
-            >
-              Rolex (9851234567)
-            </button>
-            <button
-              onClick={() => {
-                setQuery('9801987654');
-                handleSearch('9801987654');
-              }}
-              className="px-2.5 py-1 rounded bg-zinc-950 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 cursor-pointer text-[11px]"
-            >
-              Omega (9801987654)
-            </button>
-            <button
-              onClick={() => {
-                setQuery('WRN-2026-0103');
-                handleSearch('WRN-2026-0103');
-              }}
-              className="px-2.5 py-1 rounded bg-zinc-950 border border-amber-500/30 text-amber-300 hover:bg-amber-500/20 cursor-pointer text-[11px]"
-            >
-              Tissot ID (WRN-2026-0103)
-            </button>
+            <span className="text-[11px] text-zinc-500">Search Format: Enter your 10-digit registered mobile number or Warranty Certificate ID (e.g. WRN-...).</span>
           </div>
         </div>
 

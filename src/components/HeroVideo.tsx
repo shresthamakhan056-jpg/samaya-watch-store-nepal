@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Product, Warranty } from '../types';
-import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
+import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 
 interface HeroVideoProps {
   setActiveTab: (tab: string) => void;
@@ -148,33 +148,36 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab }) => {
             {/* Official Social Channel Direct Link Buttons */}
             <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <a
-                href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
+                href={resolveSocialUrl('tiktok', homepageContent.tiktokLink)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 hover:bg-black text-zinc-200 hover:text-white border border-zinc-700 hover:border-pink-500/60 transition-all flex items-center gap-2 text-xs font-mono backdrop-blur-md shadow-lg group"
-                title="Open Official TikTok Store"
+                onClick={(e) => openSocialUrl(resolveSocialUrl('tiktok', homepageContent.tiktokLink), e)}
+                className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 hover:bg-black text-zinc-200 hover:text-white border border-zinc-700 hover:border-pink-500/60 transition-all flex items-center gap-2 text-xs font-mono backdrop-blur-md shadow-lg group cursor-pointer"
+                title="Open Official TikTok Store (@kalpa9741)"
               >
                 <TikTokIcon className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 <span>TikTok (@kalpa9741)</span>
               </a>
 
               <a
-                href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
+                href={resolveSocialUrl('instagram', homepageContent.instagramLink)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 hover:bg-zinc-900 text-zinc-200 hover:text-pink-400 border border-zinc-700 hover:border-pink-500/60 transition-all flex items-center gap-2 text-xs font-mono backdrop-blur-md shadow-lg group"
-                title="Open Official Instagram Page"
+                onClick={(e) => openSocialUrl(resolveSocialUrl('instagram', homepageContent.instagramLink), e)}
+                className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 hover:bg-zinc-900 text-zinc-200 hover:text-pink-400 border border-zinc-700 hover:border-pink-500/60 transition-all flex items-center gap-2 text-xs font-mono backdrop-blur-md shadow-lg group cursor-pointer"
+                title="Open Official Instagram Page (@kalpa_watch)"
               >
                 <InstagramIcon className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 <span>Instagram (@kalpa_watch)</span>
               </a>
 
               <a
-                href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
+                href={resolveSocialUrl('facebook', homepageContent.facebookLink)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 hover:bg-zinc-900 text-zinc-200 hover:text-blue-400 border border-zinc-700 hover:border-blue-500/60 transition-all flex items-center gap-2 text-xs font-mono backdrop-blur-md shadow-lg group"
-                title="Open Official Facebook Page"
+                onClick={(e) => openSocialUrl(resolveSocialUrl('facebook', homepageContent.facebookLink), e)}
+                className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 hover:bg-zinc-900 text-zinc-200 hover:text-blue-400 border border-zinc-700 hover:border-blue-500/60 transition-all flex items-center gap-2 text-xs font-mono backdrop-blur-md shadow-lg group cursor-pointer"
+                title="Open Official Facebook Page (कल्प Luxury)"
               >
                 <FacebookIcon className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 <span>Facebook Page</span>

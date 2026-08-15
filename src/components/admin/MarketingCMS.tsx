@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { CMSVideo, FooterLinkItem } from '../../types';
 import { compressImageFile } from '../../utils/imageCompressor';
-import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from '../SocialIcons';
+import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL, resolveSocialUrl, openSocialUrl } from '../SocialIcons';
 
 export const MarketingCMS: React.FC = () => {
   const { videos, updateHeroVideo, banners, addBanner, toggleBannerActive, deleteBanner, homepageContent, updateHomepageContent, currentUser } = useApp();
@@ -515,15 +515,14 @@ export const MarketingCMS: React.FC = () => {
                       </span>
                       <span>TikTok Official Page URL:</span>
                     </label>
-                    <a
-                      href={contentForm.tiktokLink || OFFICIAL_TIKTOK_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={(e) => openSocialUrl(resolveSocialUrl('tiktok', contentForm.tiktokLink), e)}
+                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
                     >
                       <span>Test Link</span>
                       <ExternalLink className="w-3 h-3" />
-                    </a>
+                    </button>
                   </div>
                   <input
                     type="url"
@@ -543,15 +542,14 @@ export const MarketingCMS: React.FC = () => {
                       </span>
                       <span>Instagram Official Page URL:</span>
                     </label>
-                    <a
-                      href={contentForm.instagramLink || OFFICIAL_INSTAGRAM_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={(e) => openSocialUrl(resolveSocialUrl('instagram', contentForm.instagramLink), e)}
+                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
                     >
                       <span>Test Link</span>
                       <ExternalLink className="w-3 h-3" />
-                    </a>
+                    </button>
                   </div>
                   <input
                     type="url"
@@ -571,15 +569,14 @@ export const MarketingCMS: React.FC = () => {
                       </span>
                       <span>Facebook Official Page URL:</span>
                     </label>
-                    <a
-                      href={contentForm.facebookLink || OFFICIAL_FACEBOOK_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1"
+                    <button
+                      type="button"
+                      onClick={(e) => openSocialUrl(resolveSocialUrl('facebook', contentForm.facebookLink), e)}
+                      className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
                     >
                       <span>Test Link</span>
                       <ExternalLink className="w-3 h-3" />
-                    </a>
+                    </button>
                   </div>
                   <input
                     type="url"

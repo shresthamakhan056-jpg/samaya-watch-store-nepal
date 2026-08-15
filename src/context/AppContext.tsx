@@ -222,12 +222,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (!parsed.brandTitle || parsed.brandTitle !== 'कल्प') {
-          const updated = { ...parsed, brandTitle: 'कल्प', brandSubtitle: '' };
-          localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(updated));
-          return updated;
-        }
-        return parsed;
+        const tiktokLink = (!parsed.tiktokLink || parsed.tiktokLink === 'https://tiktok.com' || parsed.tiktokLink === 'https://www.tiktok.com' || parsed.tiktokLink === 'http://tiktok.com')
+          ? INITIAL_HOMEPAGE_CONTENT.tiktokLink
+          : parsed.tiktokLink;
+        const instagramLink = (!parsed.instagramLink || parsed.instagramLink === 'https://instagram.com' || parsed.instagramLink === 'https://www.instagram.com' || parsed.instagramLink === 'http://instagram.com')
+          ? INITIAL_HOMEPAGE_CONTENT.instagramLink
+          : parsed.instagramLink;
+        const facebookLink = (!parsed.facebookLink || parsed.facebookLink === 'https://facebook.com' || parsed.facebookLink === 'https://www.facebook.com' || parsed.facebookLink === 'http://facebook.com')
+          ? INITIAL_HOMEPAGE_CONTENT.facebookLink
+          : parsed.facebookLink;
+
+        // Permanently enforce official WhatsApp contact phone number: 9823680863
+        const showroomPhone = (!parsed.showroomPhone || parsed.showroomPhone.includes('9841834244') || parsed.showroomPhone.includes('9851234567'))
+          ? '9779823680863'
+          : (parsed.showroomPhone.startsWith('977') ? parsed.showroomPhone : `977${parsed.showroomPhone.replace(/\D/g, '')}`);
+
+        const updated = {
+          ...INITIAL_HOMEPAGE_CONTENT,
+          ...parsed,
+          brandTitle: 'कल्प',
+          brandSubtitle: '',
+          showroomPhone: showroomPhone || '9779823680863',
+          showroomContact: '📞 Phone: +977 9823680863 | ✉️ Email: Kalpa9761@gmail.com | Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
+          maintenanceNotice: 'We are currently performing scheduled maintenance to upgrade our system. For inquiries and purchases, please contact us on WhatsApp (+977 9823680863) or social channels.',
+          tiktokLink,
+          instagramLink,
+          facebookLink
+        };
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(updated));
+        return updated;
       } catch (e) {
         console.error('Error parsing saved homepage_content:', e);
       }
@@ -348,7 +371,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const unsubContent = onSnapshot(contentRef, (snapshot) => {
       if (snapshot.exists()) {
         const data = snapshot.data() as CMSHomepageContent;
-        setHomepageContent(prev => ({ ...prev, ...data }));
+        const tiktokLink = (!data.tiktokLink || data.tiktokLink === 'https://tiktok.com' || data.tiktokLink === 'https://www.tiktok.com' || data.tiktokLink === 'http://tiktok.com')
+          ? INITIAL_HOMEPAGE_CONTENT.tiktokLink
+          : data.tiktokLink;
+        const instagramLink = (!data.instagramLink || data.instagramLink === 'https://instagram.com' || data.instagramLink === 'https://www.instagram.com' || data.instagramLink === 'http://instagram.com')
+          ? INITIAL_HOMEPAGE_CONTENT.instagramLink
+          : data.instagramLink;
+        const facebookLink = (!data.facebookLink || data.facebookLink === 'https://facebook.com' || data.facebookLink === 'https://www.facebook.com' || data.facebookLink === 'http://facebook.com')
+          ? INITIAL_HOMEPAGE_CONTENT.facebookLink
+          : data.facebookLink;
+
+        const showroomPhone = (!data.showroomPhone || data.showroomPhone.includes('9841834244') || data.showroomPhone.includes('9851234567'))
+          ? '9779823680863'
+          : (data.showroomPhone.startsWith('977') ? data.showroomPhone : `977${data.showroomPhone.replace(/\D/g, '')}`);
+
+        setHomepageContent(prev => ({
+          ...prev,
+          ...data,
+          brandTitle: 'कल्प',
+          brandSubtitle: '',
+          showroomPhone: showroomPhone || '9779823680863',
+          showroomContact: '📞 Phone: +977 9823680863 | ✉️ Email: Kalpa9761@gmail.com | Hours: 10:00 AM - 7:30 PM (Sun - Fri)',
+          maintenanceNotice: 'We are currently performing scheduled maintenance to upgrade our system. For inquiries and purchases, please contact us on WhatsApp (+977 9823680863) or social channels.',
+          tiktokLink,
+          instagramLink,
+          facebookLink
+        }));
       } else if (!isQuotaExceededRef.current) {
         // Initialize Firestore with default homepage content
         setDoc(contentRef, INITIAL_HOMEPAGE_CONTENT).catch(err => {
@@ -1201,7 +1249,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       productModel: product.model,
       dialColor: product.dialColor,
       serialNumber: saleData.serialNumber,
-      qrCodeUrl: `https://samaya-watch-store-nepal.ai.studio/warranty?code=${warrantyId}`,
+      qrCodeUrl: (typeof window !== 'undefined' ? `${window.location.origin}/warranty?code=${warrantyId}` : `https://kalpachhen.com/warranty?code=${warrantyId}`),
       warrantyStart: salesDateStr,
       warrantyEnd: endDateObj.toISOString().substring(0, 10),
       status: 'Active',

@@ -3,7 +3,7 @@ import { ShieldCheck, MessageSquare, Phone, Mail, Lock, Clock, Sparkles, MapPin 
 import { useApp } from '../context/AppContext';
 import kalpaLogo from '../assets/kalpa_logo.jpg';
 import { openWhatsApp, OFFICIAL_BOUTIQUE_WHATSAPP } from '../utils/whatsappService';
-import { TikTokIcon, InstagramIcon, FacebookIcon, OFFICIAL_TIKTOK_URL, OFFICIAL_INSTAGRAM_URL, OFFICIAL_FACEBOOK_URL } from './SocialIcons';
+import { TikTokIcon, InstagramIcon, FacebookIcon, resolveSocialUrl, openSocialUrl } from './SocialIcons';
 
 interface MaintenancePageProps {
   setIsAdminOpen: (open: boolean) => void;
@@ -131,30 +131,33 @@ export const MaintenancePage: React.FC<MaintenancePageProps> = ({ setIsAdminOpen
           <div className="flex flex-wrap items-center justify-center gap-3 pt-3 border-t border-zinc-800/80 text-xs">
             <span className="text-zinc-400 font-mono text-xs">Official Social Channels:</span>
             <a
-              href={homepageContent.tiktokLink || OFFICIAL_TIKTOK_URL}
+              href={resolveSocialUrl('tiktok', homepageContent.tiktokLink)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-black text-zinc-200 hover:text-white border border-zinc-800 hover:border-pink-500/50 transition-all font-mono flex items-center gap-2 group"
+              onClick={(e) => openSocialUrl(resolveSocialUrl('tiktok', homepageContent.tiktokLink), e)}
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-black text-zinc-200 hover:text-white border border-zinc-800 hover:border-pink-500/50 transition-all font-mono flex items-center gap-2 group cursor-pointer"
               title="Official TikTok Page"
             >
               <TikTokIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-white group-hover:scale-110 transition-transform" />
               <span>TikTok</span>
             </a>
             <a
-              href={homepageContent.instagramLink || OFFICIAL_INSTAGRAM_URL}
+              href={resolveSocialUrl('instagram', homepageContent.instagramLink)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-pink-400 border border-zinc-800 hover:border-pink-500/50 transition-all font-mono flex items-center gap-2 group"
+              onClick={(e) => openSocialUrl(resolveSocialUrl('instagram', homepageContent.instagramLink), e)}
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-pink-400 border border-zinc-800 hover:border-pink-500/50 transition-all font-mono flex items-center gap-2 group cursor-pointer"
               title="Official Instagram Page"
             >
               <InstagramIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-pink-400 group-hover:scale-110 transition-transform" />
               <span>Instagram</span>
             </a>
             <a
-              href={homepageContent.facebookLink || OFFICIAL_FACEBOOK_URL}
+              href={resolveSocialUrl('facebook', homepageContent.facebookLink)}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-blue-400 border border-zinc-800 hover:border-blue-500/50 transition-all font-mono flex items-center gap-2 group"
+              onClick={(e) => openSocialUrl(resolveSocialUrl('facebook', homepageContent.facebookLink), e)}
+              className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-blue-400 border border-zinc-800 hover:border-blue-500/50 transition-all font-mono flex items-center gap-2 group cursor-pointer"
               title="Official Facebook Page"
             >
               <FacebookIcon className="w-3.5 h-3.5 text-zinc-300 group-hover:text-blue-400 group-hover:scale-110 transition-transform" />

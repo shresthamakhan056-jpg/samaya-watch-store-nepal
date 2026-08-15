@@ -3,6 +3,7 @@ import { ShieldCheck, Watch, Calendar, QrCode, User, Phone, FileText, Download, 
 import { QRCodeSVG } from 'qrcode.react';
 import { Warranty } from '../types';
 import { formatWarrantyCertificateMessage, openWhatsApp } from '../utils/whatsappService';
+import kalpaLogo from '../assets/kalpa_logo.jpg';
 
 interface DigitalWarrantyCardProps {
   warranty: Warranty;
@@ -66,14 +67,17 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
         {/* Card Header: Store Logo & Status Badge */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between pb-6 border-b border-amber-500/30 gap-4 relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-lg shadow-amber-900/40 flex items-center justify-center">
-              <div className="w-full h-full bg-[#0A0A0B] rounded-[14px] flex items-center justify-center">
-                <Watch className="w-7 h-7 text-amber-400" />
-              </div>
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-600 to-amber-900 p-0.5 shadow-lg shadow-amber-900/40 flex items-center justify-center overflow-hidden shrink-0">
+              <img
+                src={kalpaLogo}
+                alt="कल्प Logo"
+                className="w-full h-full object-cover rounded-[14px]"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/kalpa_logo.jpg'; }}
+              />
             </div>
             <div>
               <div className="font-serif text-xl sm:text-2xl font-bold text-amber-100 tracking-widest uppercase">
-                समय- THE WATCH <span className="text-amber-500">STORE</span>
+                कल्प <span className="text-amber-500">LUXURY BOUTIQUE</span>
               </div>
               <div className="text-[11px] font-mono tracking-widest text-amber-400/90 uppercase">
                 OFFICIAL DIGITAL GUARANTEE CERTIFICATE
@@ -198,7 +202,7 @@ export const DigitalWarrantyCard: React.FC<DigitalWarrantyCardProps> = ({ warran
             {/* QR Code SVG */}
             <div className="p-3 bg-white rounded-2xl shadow-xl border-2 border-amber-400 inline-block">
               <QRCodeSVG
-                value={warranty.qrCodeUrl || `https://samaya-watch-store-nepal.ai.studio/warranty?code=${warranty.id}`}
+                value={warranty.qrCodeUrl?.replace('samaya-watch-store-nepal.ai.studio', 'kalpachhen.com') || (typeof window !== 'undefined' ? `${window.location.origin}/warranty?code=${warranty.id}` : `https://kalpachhen.com/warranty?code=${warranty.id}`)}
                 size={140}
                 bgColor="#FFFFFF"
                 fgColor="#000000"

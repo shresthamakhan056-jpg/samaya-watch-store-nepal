@@ -156,8 +156,13 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
                 <div>
                   <div className="relative aspect-square rounded-xl overflow-hidden bg-black mb-3">
                     <img
-                      src={watch.images[0]}
+                      src={watch.images && watch.images.length > 0 && watch.images[0] ? watch.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
                       alt={watch.model}
+                      loading="lazy"
+                      decoding="async"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
+                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                     <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
@@ -218,8 +223,13 @@ export const WatchGallery: React.FC<WatchGalleryProps> = ({ onOrderWatch }) => {
               >
                 <div className="flex items-center gap-4 w-full md:w-2/3">
                   <img
-                    src={watch.images[0]}
+                    src={watch.images && watch.images.length > 0 && watch.images[0] ? watch.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
                     alt={watch.model}
+                    loading="lazy"
+                    decoding="async"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop';
+                    }}
                     className="w-24 h-24 rounded-xl object-cover border border-amber-500/30 bg-black shrink-0"
                   />
                   <div className="space-y-1">

@@ -55,7 +55,12 @@ export const SocialOrderModal: React.FC<SocialOrderModalProps> = ({ product, onC
 
         {/* Watch Quick Summary */}
         <div className="bg-zinc-950 rounded-xl p-3 border border-zinc-800/80 mb-5 flex gap-3 items-center">
-          <img src={product.images[0]} alt={product.model} className="w-16 h-16 rounded-lg object-cover border border-amber-500/20 bg-black" />
+          <img
+            src={product.images && product.images.length > 0 && product.images[0] ? product.images[0] : 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'}
+            alt={product.model}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1000&auto=format&fit=crop'; }}
+            className="w-16 h-16 rounded-lg object-cover border border-amber-500/20 bg-black"
+          />
           <div className="text-xs space-y-0.5">
             <div className="text-amber-400 font-bold uppercase">{product.brand}</div>
             <div className="text-zinc-200 font-semibold">{product.model}</div>
