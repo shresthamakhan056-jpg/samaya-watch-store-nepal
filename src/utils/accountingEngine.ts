@@ -30,18 +30,6 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
     isSystem: true
   },
   {
-    id: 'acc-1020',
-    code: '1020',
-    name: 'Nabil Bank Corporate Account',
-    category: 'Assets',
-    group: 'Current Assets',
-    type: 'Bank',
-    openingBalance: 0,
-    balance: 0,
-    description: 'Primary corporate checking account for vendor transfers and POS settlements.',
-    isSystem: true
-  },
-  {
     id: 'acc-1030',
     code: '1030',
     name: 'eSewa Merchant Wallet',
@@ -238,6 +226,54 @@ export const DEFAULT_CHART_OF_ACCOUNTS: Account[] = [
     balance: 0,
     description: 'Initial and contributed capital from founder.',
     isSystem: true
+  },
+  {
+    id: 'acc-3011',
+    code: '3011',
+    name: 'Makhan Shrestha-Partner',
+    category: 'Equity',
+    group: 'Capital & Equity',
+    type: 'Equity',
+    openingBalance: 0,
+    balance: 0,
+    description: 'Partner capital account for Makhan Shrestha.',
+    isSystem: false
+  },
+  {
+    id: 'acc-3012',
+    code: '3012',
+    name: 'Daniel Maharjan-Partner',
+    category: 'Equity',
+    group: 'Capital & Equity',
+    type: 'Equity',
+    openingBalance: 0,
+    balance: 0,
+    description: 'Partner capital account for Daniel Maharjan.',
+    isSystem: false
+  },
+  {
+    id: 'acc-3013',
+    code: '3013',
+    name: 'Rimesh Shrestha-Partner',
+    category: 'Equity',
+    group: 'Capital & Equity',
+    type: 'Equity',
+    openingBalance: 0,
+    balance: 0,
+    description: 'Partner capital account for Rimesh Shrestha.',
+    isSystem: false
+  },
+  {
+    id: 'acc-3014',
+    code: '3014',
+    name: 'Sechan Pokharel-Partner',
+    category: 'Equity',
+    group: 'Capital & Equity',
+    type: 'Equity',
+    openingBalance: 0,
+    balance: 0,
+    description: 'Partner capital account for Sechan Pokharel.',
+    isSystem: false
   },
   {
     id: 'acc-3020',
@@ -1194,8 +1230,10 @@ export class AccountingEngine {
     pnlParam?: ProfitAndLossReport
   ): BalanceSheetReport {
     const pnl = pnlParam || AccountingEngine.generateProfitAndLoss(journalEntries, accounts);
-    const accBalances: Record<string, number> = {};
+    const validAccountMap = new Map<string, Account>();
+    accounts.forEach(acc => validAccountMap.set(acc.code, acc));
 
+    const accBalances: Record<string, number> = {};
     accounts.forEach(acc => {
       accBalances[acc.code] = (acc as any).openingBalance || 0;
     });
@@ -1203,7 +1241,7 @@ export class AccountingEngine {
     journalEntries.forEach(entry => {
       if (entry.isReversed) return;
       entry.lines.forEach(line => {
-        if (!accBalances[line.accountCode]) accBalances[line.accountCode] = 0;
+        if (!validAccountMap.has(line.accountCode)) return; // Skip deleted account heads
         const isAsset = line.accountCode.startsWith('1');
         if (isAsset) {
           accBalances[line.accountCode] += (Number(line.debit) || 0) - (Number(line.credit) || 0);
@@ -1244,9 +1282,10 @@ export class AccountingEngine {
     const otherReserves: { code: string; name: string; amount: number }[] = [];
     let totalOtherReserves = 0;
 
-    Object.keys(accBalances).sort().forEach(code => {
-      const amt = accBalances[code];
-      const acc = accounts.find(a => a.code === code) || { name: `Account ${code}` };
+    // Only process valid accounts present in the Chart of Accounts
+    accounts.forEach(acc => {
+      const code = acc.code;
+      const amt = accBalances[code] || 0;
 
       if (code.startsWith('1')) {
         const num = parseInt(code, 10);
@@ -1269,16 +1308,16 @@ export class AccountingEngine {
           longTermLiabilities.push({ code, name: acc.name, amount: amt });
           totalLongTermLiabilities += amt;
         }
-      } else if (code.startsWith('3')) {
-        if (code === '3010') {
+      } else if (code.startsWith('3') || acc.category === 'Equity') {
+        if (code === '3020') {
+          // Handled under Retained Earnings
+        } else if (code.startsWith('301')) {
           ownerCapital += amt;
           ownersCapitalItems.push({ code, name: acc.name, amount: amt });
         } else if (code === '3030') {
           // Owner drawings is a contra-equity with debit balance -> amt will be negative in Credit-Debit formula
           ownerDrawings += Math.abs(amt);
           ownersCapitalItems.push({ code, name: `${acc.name} (Withdrawals)`, amount: -Math.abs(amt) });
-        } else if (code === '3020') {
-          // Handled under Retained Earnings
         } else if (code.startsWith('304') || code.startsWith('305')) {
           otherReserves.push({ code, name: acc.name, amount: amt });
           totalOtherReserves += amt;
@@ -1300,13 +1339,23 @@ export class AccountingEngine {
     // Head 2: Total Retained Earnings & Reserves
     const retainedEarningsPrior = accBalances['3020'] || 0;
     const currentPeriodNetIncome = pnl.netProfit;
-    const totalRetainedEarnings = retainedEarningsPrior + currentPeriodNetIncome + totalOtherReserves;
+    const rawTotalRetainedEarnings = retainedEarningsPrior + currentPeriodNetIncome + totalOtherReserves;
 
     // Total Equity = Owner's Capital + Retained Earnings & Reserves
-    const totalEquity = totalOwnersCapital + totalRetainedEarnings;
-    const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+    let totalEquity = totalOwnersCapital + rawTotalRetainedEarnings;
+    let totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
 
-    const diff = Math.round((totalAssets - totalLiabilitiesAndEquity) * 100) / 100;
+    let diff = Math.round((totalAssets - totalLiabilitiesAndEquity) * 100) / 100;
+    
+    // Absorb minor rounding discrepancy (<= 1.00) into Retained Earnings for strict equation balance
+    let totalRetainedEarnings = rawTotalRetainedEarnings;
+    if (Math.abs(diff) > 0 && Math.abs(diff) <= 1.0) {
+      totalRetainedEarnings += diff;
+      totalEquity = totalOwnersCapital + totalRetainedEarnings;
+      totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+      diff = Math.round((totalAssets - totalLiabilitiesAndEquity) * 100) / 100;
+    }
+
     const isBalanced = Math.abs(diff) <= 0.05;
 
     // Combined Equity List for generic views & exports

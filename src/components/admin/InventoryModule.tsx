@@ -5,7 +5,7 @@ import { Product, MovementType, Gender, ProductStatus } from '../../types';
 import { DeleteVerificationModal } from './DeleteVerificationModal';
 import { exportInventoryReport, exportInventoryReportPDF } from '../../utils/reportExporter';
 import { BrandStockVisualization } from './BrandStockVisualization';
-import { compressImageFile } from '../../utils/imageCompressor';
+import { compressImageFileWithDetails, formatBytes } from '../../utils/imageCompressor';
 
 export const InventoryModule: React.FC = () => {
   const { products, addProduct, updateProduct, deleteProduct, adjustStock, restoreAllStocksExcept, suppliers, currentUser } = useApp();
@@ -16,6 +16,7 @@ export const InventoryModule: React.FC = () => {
   const [showStockAnalytics, setShowStockAnalytics] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [imageCompressionMsg, setImageCompressionMsg] = useState('');
 
   // Adjustment state
   const [adjustQty, setAdjustQty] = useState<number>(1);
@@ -110,11 +111,15 @@ export const InventoryModule: React.FC = () => {
     if (!file) return;
 
     setIsUploadingImage(true);
+    setImageCompressionMsg(`Auto-compressing ${formatBytes(file.size)} photo...`);
     try {
-      // Create crystal clear, high-resolution optimized data URL (1400x1400, 0.88 quality)
-      const compressedDataUrl = await compressImageFile(file, 1400, 1400, 0.88);
+      // Auto-compress large watch photos (1400x1400 HD, smart multi-pass quality)
+      const result = await compressImageFileWithDetails(file, 1400, 1400, 0.85);
+      const compressedDataUrl = result.dataUrl;
       if (compressedDataUrl) {
         setEditImageUrl(compressedDataUrl);
+        setImageCompressionMsg(`Optimized by ${result.reductionPercentage}% (${result.formattedOriginalSize} ➔ ${result.formattedCompressedSize})`);
+        setTimeout(() => setImageCompressionMsg(''), 4000);
       }
 
       // Try server upload as well
@@ -123,12 +128,11 @@ export const InventoryModule: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileData: compressedDataUrl,
-          fileName: file.name,
-          mimeType: file.type
+          fileName: file.name || 'product_watch.jpg',
+          mimeType: file.type || 'image/jpeg'
         })
       }).then(res => res.json()).then(result => {
         if (result?.url) {
-          // If server hosted successfully, keep the clean URL or the base64
           console.log('Image uploaded to server:', result.url);
         }
       }).catch(() => {});
@@ -145,10 +149,14 @@ export const InventoryModule: React.FC = () => {
     if (!file) return;
 
     setIsUploadingImage(true);
+    setImageCompressionMsg(`Auto-compressing ${formatBytes(file.size)} photo...`);
     try {
-      const compressedDataUrl = await compressImageFile(file, 1400, 1400, 0.88);
+      const result = await compressImageFileWithDetails(file, 1400, 1400, 0.85);
+      const compressedDataUrl = result.dataUrl;
       if (compressedDataUrl) {
         setImageUrl(compressedDataUrl);
+        setImageCompressionMsg(`Optimized by ${result.reductionPercentage}% (${result.formattedOriginalSize} ➔ ${result.formattedCompressedSize})`);
+        setTimeout(() => setImageCompressionMsg(''), 4000);
       }
 
       fetch('/api/upload-media', {
@@ -156,8 +164,8 @@ export const InventoryModule: React.FC = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fileData: compressedDataUrl,
-          fileName: file.name,
-          mimeType: file.type
+          fileName: file.name || 'product_watch.jpg',
+          mimeType: file.type || 'image/jpeg'
         })
       }).then(res => res.json()).then(result => {
         if (result?.url) {
@@ -806,17 +814,24 @@ export const InventoryModule: React.FC = () => {
                       className="w-full bg-zinc-900 border border-zinc-800 rounded-lg p-2 text-zinc-100 font-mono text-[11px] focus:border-amber-500/60 focus:outline-none"
                     />
 
-                    <label className={`inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs ${isUploadingImage ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-amber-500/30'}`}>
-                      <Upload className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{isUploadingImage ? 'Uploading Image...' : 'Upload Image File'}</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        disabled={isUploadingImage}
-                        onChange={handleEditImageUpload}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <label className={`inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs ${isUploadingImage ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-amber-500/30'}`}>
+                        <Upload className="w-3.5 h-3.5 text-amber-400" />
+                        <span>{isUploadingImage ? 'Auto-Compressing...' : 'Upload Image File'}</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          disabled={isUploadingImage}
+                          onChange={handleEditImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                      {imageCompressionMsg && (
+                        <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1 bg-emerald-950/60 border border-emerald-500/30 px-2 py-1 rounded">
+                          ⚡ {imageCompressionMsg}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-col items-center justify-center p-2 bg-zinc-900 border border-zinc-800 rounded-xl">
@@ -1027,17 +1042,24 @@ export const InventoryModule: React.FC = () => {
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-100 font-mono text-[11px] focus:border-amber-500/60 focus:outline-none"
                   />
 
-                  <label className={`inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs ${isUploadingImage ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-amber-500/30'}`}>
-                    <Upload className="w-3.5 h-3.5 text-amber-400" />
-                    <span>{isUploadingImage ? 'Uploading Image...' : 'Upload Watch Photo'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={isUploadingImage}
-                      onChange={handleAddImageUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className={`inline-flex items-center gap-2 px-3 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold rounded-lg transition-colors text-xs ${isUploadingImage ? 'opacity-50 cursor-wait' : 'cursor-pointer hover:bg-amber-500/30'}`}>
+                      <Upload className="w-3.5 h-3.5 text-amber-400" />
+                      <span>{isUploadingImage ? 'Auto-Compressing...' : 'Upload Watch Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={isUploadingImage}
+                        onChange={handleAddImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    {imageCompressionMsg && (
+                      <span className="text-[11px] text-emerald-400 font-mono flex items-center gap-1 bg-emerald-950/60 border border-emerald-500/30 px-2 py-1 rounded">
+                        ⚡ {imageCompressionMsg}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex flex-col items-center justify-center p-2 bg-zinc-950 border border-zinc-800 rounded-xl">

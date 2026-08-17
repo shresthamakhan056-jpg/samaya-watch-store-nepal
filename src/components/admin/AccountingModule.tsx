@@ -642,38 +642,24 @@ export const AccountingModule: React.FC = () => {
                   </div>
 
                   <div className="space-y-1.5 text-xs">
-                    {/* Owner Capital Account 3010 */}
-                    <div className="flex justify-between items-center py-1.5 px-3 bg-slate-900/60 rounded-lg">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-[11px] text-amber-400 font-bold">3010</span>
-                        <span className="text-slate-200">Owner Initial & Invested Capital</span>
-                      </div>
-                      <span className="font-mono font-semibold text-white">
-                        NPR {balanceSheet.ownerCapital.toLocaleString()}
-                      </span>
-                    </div>
-
-                    {/* Owner Drawings Account 3030 */}
-                    <div className="flex justify-between items-center py-1.5 px-3 bg-rose-950/20 border border-rose-900/30 rounded-lg text-rose-300">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-mono text-[11px] text-rose-400 font-bold">3030</span>
-                        <span>Less: Owner Drawings / Withdrawals (निकासी)</span>
-                      </div>
-                      <span className="font-mono font-semibold text-rose-400">
-                        (-) NPR {balanceSheet.ownerDrawings.toLocaleString()}
-                      </span>
-                    </div>
-
-                    {/* Other capital items if any */}
-                    {balanceSheet.ownersCapitalItems.filter(i => i.code !== '3010' && i.code !== '3030').map((c, idx) => (
-                      <div key={idx} className="flex justify-between items-center py-1.5 px-3 bg-slate-900/60 rounded-lg">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-mono text-[11px] text-amber-400 font-bold">{c.code}</span>
-                          <span className="text-slate-200">{c.name}</span>
+                    {balanceSheet.ownersCapitalItems.map((c, idx) => {
+                      const isDrawings = c.code === '3030';
+                      return (
+                        <div key={idx} className={`flex justify-between items-center py-1.5 px-3 rounded-lg ${
+                          isDrawings 
+                            ? 'bg-rose-950/20 border border-rose-900/30 text-rose-300' 
+                            : 'bg-slate-900/60 text-slate-200'
+                        }`}>
+                          <div className="flex items-center space-x-2">
+                            <span className={`font-mono text-[11px] font-bold ${isDrawings ? 'text-rose-400' : 'text-amber-400'}`}>{c.code}</span>
+                            <span>{c.name}</span>
+                          </div>
+                          <span className={`font-mono font-semibold ${isDrawings ? 'text-rose-400' : 'text-white'}`}>
+                            {isDrawings && c.amount < 0 ? `(-) NPR ${Math.abs(c.amount).toLocaleString()}` : `NPR ${c.amount.toLocaleString()}`}
+                          </span>
                         </div>
-                        <span className="font-mono font-semibold text-white">NPR {c.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
+                      );
+                    })}
 
                     <div className="flex justify-between py-1.5 px-3 bg-amber-500/10 border border-amber-500/20 rounded-lg font-bold text-amber-200 text-xs">
                       <span>Subtotal Owner's Capital:</span>

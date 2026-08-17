@@ -55,9 +55,17 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
   const [modalWarranties, setModalWarranties] = useState<Warranty[]>([]);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const currentVideoUrl = videos[0]?.videoUrl || homepageContent.heroVideoUrl;
+  const currentVideoUrl = homepageContent.heroVideoUrl || videos[0]?.videoUrl;
   const configuredBanners = banners.filter(b => b.active);
   const activeBanners = configuredBanners.length > 0 ? configuredBanners : DEFAULT_HIGH_RES_BANNERS;
+
+  // Reset video error and reload video whenever currentVideoUrl changes
+  useEffect(() => {
+    setVideoError(false);
+    if (videoRef.current) {
+      videoRef.current.load();
+    }
+  }, [currentVideoUrl]);
 
   // Auto-play banner slide carousel
   useEffect(() => {
@@ -117,16 +125,18 @@ export const HeroVideo: React.FC<HeroVideoProps> = ({ setActiveTab, onOrderWatch
           <video
             ref={videoRef}
             key={currentVideoUrl}
+            src={currentVideoUrl}
             autoPlay
             loop
             muted={isMuted}
             playsInline
-            onError={() => setVideoError(true)}
+            onError={() => {
+              console.warn('Notice: Background video playback error for URL:', currentVideoUrl);
+              setVideoError(true);
+            }}
             poster="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop"
             className="absolute inset-0 w-full h-full object-cover scale-105 filter brightness-[0.82] contrast-110 transition-transform duration-1000"
-          >
-            <source src={currentVideoUrl} type="video/mp4" onError={() => setVideoError(true)} />
-          </video>
+          />
         ) : (
           <img
             src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop"

@@ -384,6 +384,7 @@ export interface Account {
   balance: number;
   description?: string;
   isSystem?: boolean;
+  status?: 'Active' | 'Inactive';
 }
 
 export type VoucherType =

@@ -488,6 +488,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const data = snapshot.data() as CMSVideo;
         if (data && data.videoUrl) {
           setVideos([data]);
+          try {
+            localStorage.setItem(`${LOCAL_STORAGE_KEY}_videos`, JSON.stringify([data]));
+          } catch (e) {}
         }
       }
     }, (err) => {
@@ -500,9 +503,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     // 2b. Banners Collection Listener (individual docs per banner)
     const unsubBannersCollection = onSnapshot(collection(db, 'cms_banners'), (colSnapshot) => {
       if (!colSnapshot.empty) {
-        const remoteBanners = colSnapshot.docs.map(d => d.data() as CMSBanner);
+        const remoteBanners = colSnapshot.docs.map(d => d.data() as CMSBanner).filter(b => b && b.id && b.imageUrl);
         if (remoteBanners.length > 0) {
           setBanners(remoteBanners);
+          try {
+            localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(remoteBanners));
+          } catch (e) {}
         }
       }
     }, (err) => {
@@ -515,7 +521,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data && Array.isArray(data.banners) && data.banners.length > 0) {
-          setBanners(prev => prev.length === 0 ? data.banners : prev);
+          setBanners(prev => {
+            const remoteValid = data.banners.filter((b: any) => b && b.id && b.imageUrl);
+            if (remoteValid.length === 0) return prev;
+            if (prev.length === 0) return remoteValid;
+            // Merge banners preserving any active local banners
+            const remoteMap = new Map(remoteValid.map((b: CMSBanner) => [b.id, b]));
+            const merged = [...prev];
+            remoteValid.forEach((rb: CMSBanner) => {
+              const idx = merged.findIndex(mb => mb.id === rb.id);
+              if (idx >= 0) {
+                merged[idx] = rb;
+              } else {
+                merged.push(rb);
+              }
+            });
+            try {
+              localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(merged));
+            } catch (e) {}
+            return merged;
+          });
         }
       }
     }, (err) => {
@@ -590,7 +615,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           const sanitizedAccounts = data.accounts.filter(
             (a: Account) => a.id !== 'acc-1020' && a.code !== '1020' && !a.name?.toLowerCase().includes('nabil bank')
           );
-          setAccounts(sanitizedAccounts);
+          const existingCodes = new Set(sanitizedAccounts.map((a: Account) => a.code));
+          const mergedAccounts = [...sanitizedAccounts];
+          INITIAL_ACCOUNTS.forEach(acc => {
+            if (!existingCodes.has(acc.code)) {
+              mergedAccounts.push(acc);
+            }
+          });
+          setAccounts(mergedAccounts);
         }
         if (data.journalEntries && Array.isArray(data.journalEntries) && data.journalEntries.length > 0) {
           const sanitizedEntries = data.journalEntries.filter(
@@ -708,16 +740,26 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [accounts, setAccounts] = useState<Account[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_accounts`);
-    if (!saved) return INITIAL_ACCOUNTS;
-    try {
-      const parsed: Account[] = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter((a: Account) => a.id !== 'acc-1020' && a.code !== '1020' && !a.name?.toLowerCase().includes('nabil bank'));
+    let baseAccounts = INITIAL_ACCOUNTS;
+    if (saved) {
+      try {
+        const parsed: Account[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          baseAccounts = parsed.filter((a: Account) => a.id !== 'acc-1020' && a.code !== '1020' && !a.name?.toLowerCase().includes('nabil bank'));
+        }
+      } catch {
+        // fallback to INITIAL_ACCOUNTS
       }
-      return INITIAL_ACCOUNTS;
-    } catch {
-      return INITIAL_ACCOUNTS;
     }
+    // Ensure all accounts from INITIAL_ACCOUNTS (e.g. partner accounts 3011, 3012, 3013, 3014) are present
+    const existingCodes = new Set(baseAccounts.map(a => a.code));
+    const merged = [...baseAccounts];
+    INITIAL_ACCOUNTS.forEach(acc => {
+      if (!existingCodes.has(acc.code)) {
+        merged.push(acc);
+      }
+    });
+    return merged;
   });
 
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(() => {
@@ -834,28 +876,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Save changes to localStorage & Firestore
   useEffect(() => {
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(products));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_customers`, JSON.stringify(customers));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_suppliers`, JSON.stringify(suppliers));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(sales));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_purchases`, JSON.stringify(purchases));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranties`, JSON.stringify(warranties));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_claims`, JSON.stringify(claims));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_replacements`, JSON.stringify(replacements));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_extensions`, JSON.stringify(extensions));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_verification_logs`, JSON.stringify(verificationLogs));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_notification_templates`, JSON.stringify(notificationTemplates));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranty_settings`, JSON.stringify(warrantySettings));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(accounts));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_journal_entries`, JSON.stringify(journalEntries));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(banners));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_videos`, JSON.stringify(videos));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(homepageContent));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_items`, JSON.stringify(supplyItems));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_purchases`, JSON.stringify(supplyPurchases));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_usage_logs`, JSON.stringify(supplyUsageLogs));
-    localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs));
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_users`, JSON.stringify(users)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_products`, JSON.stringify(products)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_customers`, JSON.stringify(customers)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_suppliers`, JSON.stringify(suppliers)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_sales`, JSON.stringify(sales)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_purchases`, JSON.stringify(purchases)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranties`, JSON.stringify(warranties)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_claims`, JSON.stringify(claims)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_replacements`, JSON.stringify(replacements)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_extensions`, JSON.stringify(extensions)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_verification_logs`, JSON.stringify(verificationLogs)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_notification_templates`, JSON.stringify(notificationTemplates)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_warranty_settings`, JSON.stringify(warrantySettings)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_accounts`, JSON.stringify(accounts)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_journal_entries`, JSON.stringify(journalEntries)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(banners)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_videos`, JSON.stringify(videos)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(homepageContent)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_items`, JSON.stringify(supplyItems)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_purchases`, JSON.stringify(supplyPurchases)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_supply_usage_logs`, JSON.stringify(supplyUsageLogs)); } catch (e) {}
+    try { localStorage.setItem(`${LOCAL_STORAGE_KEY}_audit_logs`, JSON.stringify(auditLogs)); } catch (e) {}
 
     // Do not re-push if remote data not loaded yet, or if this state update was triggered by an incoming Firestore snapshot, or if quota is exceeded
     if (!hasLoadedFromFirestoreRef.current || isRemoteUpdateRef.current || isQuotaExceededRef.current) {
@@ -883,6 +925,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         warrantySettings,
         accounts,
         journalEntries,
+        banners,
+        videos,
         auditLogs,
         updatedAt: new Date().toISOString()
       }, { merge: true }).catch(err => {
@@ -1029,29 +1073,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const syncBannersToFirestore = async (bannersList: CMSBanner[]) => {
     try {
-      // Sync each banner as an individual document in cms_banners collection
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(bannersList));
+      } catch (e) {}
+
+      // 1. Sync each banner as an individual document in cms_banners collection
       await Promise.all(
         bannersList.map(async (b) => {
           let imageUrl = b.imageUrl;
           if (imageUrl && imageUrl.startsWith('data:image/')) {
-            imageUrl = await compressImageDataUrl(imageUrl, 1000, 1000, 0.70);
+            imageUrl = await compressImageDataUrl(imageUrl, 1200, 1200, 0.75);
           }
           const compressedBanner = { ...b, imageUrl };
           await setDoc(doc(db, 'cms_banners', b.id), compressedBanner, { merge: true });
         })
       );
 
-      // Also attempt to sync summary list to cms_content/banners as fallback
-      const summaryBanners = await Promise.all(
-        bannersList.map(async (b) => {
-          if (b.imageUrl && b.imageUrl.startsWith('data:image/')) {
-            const compressed = await compressImageDataUrl(b.imageUrl, 700, 700, 0.50);
-            return { ...b, imageUrl: compressed };
-          }
-          return b;
-        })
-      );
-      await setDoc(doc(db, 'cms_content', 'banners'), { banners: summaryBanners }, { merge: true }).catch(() => {});
+      // 2. Also attempt to sync summary list to cms_content/banners
+      await setDoc(doc(db, 'cms_content', 'banners'), { banners: bannersList, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+      
+      // 3. Sync to main erp_store/data
+      setDoc(doc(db, 'erp_store', 'data'), { banners: bannersList, updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
     } catch (err: any) {
       console.error('Firestore banners sync notice:', err);
     }
@@ -1060,7 +1102,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const addBanner = async (banner: Omit<CMSBanner, 'id'>) => {
     let compressedUrl = banner.imageUrl;
     if (banner.imageUrl?.startsWith('data:image/')) {
-      compressedUrl = await compressImageDataUrl(banner.imageUrl, 1200, 1200, 0.72);
+      compressedUrl = await compressImageDataUrl(banner.imageUrl, 1400, 1400, 0.80);
     }
 
     const bannerId = `ban-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -1070,16 +1112,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       id: bannerId
     };
 
+    setBanners(prev => {
+      const next = [...prev, newBanner];
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(next));
+      } catch (e) {}
+      syncBannersToFirestore(next);
+      return next;
+    });
+
     // Save directly to individual Firestore doc in cms_banners collection
     setDoc(doc(db, 'cms_banners', bannerId), newBanner, { merge: true }).catch(err => {
       console.error('Failed to write new banner to cms_banners collection:', err);
     });
 
-    setBanners(prev => {
-      const next = [...prev, newBanner];
-      syncBannersToFirestore(next);
-      return next;
-    });
     logAction('Added Banner Slide', 'Marketing CMS', `Added slide photo banner "${banner.title}"`);
   };
 
@@ -1093,6 +1139,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         }
         return b;
       });
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(next));
+      } catch (e) {}
       syncBannersToFirestore(next);
       return next;
     });
@@ -1102,6 +1151,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     deleteDoc(doc(db, 'cms_banners', id)).catch(console.error);
     setBanners(prev => {
       const next = prev.filter(b => b.id !== id);
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_banners`, JSON.stringify(next));
+      } catch (e) {}
       syncBannersToFirestore(next);
       return next;
     });
@@ -1109,13 +1161,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const updateHeroVideo = (video: CMSVideo) => {
     setVideos([video]);
-    // Sync to Firestore
-    setDoc(doc(db, 'cms_content', 'hero_video'), video, { merge: true }).catch(err => {
-      console.error('Firestore hero video sync error:', err);
-      if (err?.message?.includes('exceeds') || err?.message?.includes('bytes') || err?.code === 'invalid-argument') {
-        alert('⚠️ Note: Uploaded video file exceeds Firestore single-document limit (1MB max).\n\nWhile it displays in your current browser tab, it cannot be synced across devices or to the published shared URL.\n\n👉 Please enter a public video URL link (e.g. MP4 hosted on Mixkit, Pexels, Cloudinary, AWS S3) in the video settings.');
-      }
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_KEY}_videos`, JSON.stringify([video]));
+    } catch (e) {}
+
+    // Update homepage content heroVideoUrl as well
+    setHomepageContent(prev => {
+      const next = { ...prev, heroVideoUrl: video.videoUrl };
+      try {
+        localStorage.setItem(`${LOCAL_STORAGE_KEY}_homepage_content`, JSON.stringify(next));
+      } catch (e) {}
+      return next;
     });
+
+    // Sync to Firestore cms_content/hero_video, cms_content/homepage, and erp_store/data
+    setDoc(doc(db, 'cms_content', 'hero_video'), video, { merge: true }).catch(err => {
+      console.log('Firestore hero video sync notice:', err);
+    });
+    setDoc(doc(db, 'cms_content', 'homepage'), { heroVideoUrl: video.videoUrl }, { merge: true }).catch(err => {
+      console.log('Firestore homepage heroVideoUrl sync notice:', err);
+    });
+    setDoc(doc(db, 'erp_store', 'data'), { videos: [video], updatedAt: new Date().toISOString() }, { merge: true }).catch(() => {});
+
     logAction('Updated Hero Video', 'Marketing CMS', `Updated promotional background video stream`);
   };
 

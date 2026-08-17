@@ -1388,17 +1388,16 @@ export const exportBalanceSheetPDF = (bs: any, fiscalYear: string) => {
   }
   rows.push(['', 'TOTAL LIABILITIES (L)', `NPR ${bs.totalLiabilities.toLocaleString()}`]);
 
-  rows.push(['--- III. HEAD: OWNER\'S EQUITY & CAPITAL (मालिकको पुँजी) ---', '', '']);
-  rows.push(['  3010', 'Owner Initial & Contributed Capital', `NPR ${(bs.ownerCapital || 0).toLocaleString()}`]);
-  if (bs.ownerDrawings && bs.ownerDrawings > 0) {
-    rows.push(['  3030', 'Less: Owner Drawings / Withdrawals', `(NPR ${bs.ownerDrawings.toLocaleString()})`]);
-  }
-  if (bs.ownersCapitalItems) {
-    bs.ownersCapitalItems.filter((i: any) => i.code !== '3010' && i.code !== '3030').forEach((c: any) => {
-      rows.push([`  ${c.code}`, c.name, `NPR ${c.amount.toLocaleString()}`]);
+  rows.push(['--- II. HEAD: OWNER\'S EQUITY & CAPITAL (मालिकको पुँजी) ---', '', '']);
+  if (bs.ownersCapitalItems && bs.ownersCapitalItems.length > 0) {
+    bs.ownersCapitalItems.forEach((c: any) => {
+      const isDrawings = c.code === '3030';
+      rows.push([`  ${c.code}`, c.name, isDrawings && c.amount < 0 ? `(NPR ${Math.abs(c.amount).toLocaleString()})` : `NPR ${c.amount.toLocaleString()}`]);
     });
+  } else {
+    rows.push(['  3010', 'Owner Capital Equity', `NPR ${(bs.ownerCapital || 0).toLocaleString()}`]);
   }
-  rows.push(['', 'SUBTOTAL OWNER\'S CAPITAL', `NPR ${(bs.totalOwnersCapital || bs.ownerCapital || 0).toLocaleString()}`]);
+  rows.push(['', 'SUBTOTAL OWNER\'S CAPITAL', `NPR ${(bs.totalOwnersCapital || 0).toLocaleString()}`]);
 
   rows.push(['--- IV. HEAD: RETAINED EARNINGS & ACCUMULATED PROFIT (सञ्चित नाफा) ---', '', '']);
   rows.push(['  3020', 'Retained Earnings (Beginning / Prior Period)', `NPR ${(bs.retainedEarningsPrior || 0).toLocaleString()}`]);
