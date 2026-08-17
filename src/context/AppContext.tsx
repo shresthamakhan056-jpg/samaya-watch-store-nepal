@@ -314,26 +314,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [users, setUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem(`${LOCAL_STORAGE_KEY}_users`);
     if (saved) {
-      const parsed: User[] = JSON.parse(saved);
-      // Ensure all users have username and password, clean dummy name Prem Shrestha
-      return parsed.map(u => {
-        let name = u.name;
-        if (name === 'Prem Shrestha') {
-          name = 'Super Admin';
+      try {
+        const parsed: User[] = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(u => {
+            let name = u.name;
+            if (name === 'Prem Shrestha') {
+              name = 'Super Admin';
+            }
+            return {
+              ...u,
+              name,
+              username: u.username || (u.id === 'usr-1' ? 'admin' : u.email?.split('@')[0] || name?.toLowerCase().replace(/\s+/g, '') || 'staff'),
+              password: u.password || 'admin123'
+            };
+          });
         }
-        return {
-          ...u,
-          name,
-          username: u.username || (u.id === 'usr-1' ? 'admin' : u.email.split('@')[0] || name.toLowerCase().replace(/\s+/g, '')),
-          password: u.password || 'admin123'
-        };
-      });
+      } catch (e) {
+        console.warn('Failed to parse users from storage:', e);
+      }
     }
     return INITIAL_USERS;
   });
 
   const [currentUser, setCurrentUser] = useState<User>(() => {
-    const primary = users[0] || INITIAL_USERS[0];
+    const primary = INITIAL_USERS[0];
     if (primary.name === 'Prem Shrestha') {
       return { ...primary, name: 'Super Admin' };
     }
