@@ -21,22 +21,22 @@ interface HeroVideoProps {
 const DEFAULT_HIGH_RES_BANNERS = [
   {
     id: 'def-banner-1',
-    title: 'Swiss Automatic Chronograph Masterpiece',
-    subtitle: 'Precision Co-Axial Escapement with Sapphire Crystal & 100M Water Resistance',
+    title: 'कल्प Luxury Timepieces • Kathmandu Collection',
+    subtitle: 'Authentic Luxury Watches with Automated Digital QR Warranty & Showroom Support',
     imageUrl: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=1600&auto=format&fit=crop',
     active: true
   },
   {
     id: 'def-banner-2',
-    title: 'Executive Rose Gold & Emerald Dial Edition',
-    subtitle: 'Crafted for the Discerning Collector with Automated Digital QR Warranty',
+    title: 'Direct Order via TikTok, Instagram & Messenger',
+    subtitle: 'Order directly via official channels with verified Nepal doorstep delivery',
     imageUrl: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=1600&auto=format&fit=crop',
     active: true
   },
   {
     id: 'def-banner-3',
-    title: 'Horology Elegance • Certified Nepal Importer',
-    subtitle: 'Direct Showroom Sourcing in Kathmandu with Immutable ERP Authentication',
+    title: 'Certified Importer & Tamper-Proof Digital Verification',
+    subtitle: 'Every timepiece is registered in our official cloud ERP with instant QR check',
     imageUrl: 'https://images.unsplash.com/photo-1547996160-71dfa6358462?q=80&w=1600&auto=format&fit=crop',
     active: true
   }
